@@ -1,36 +1,32 @@
-import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog } from "electron";
-import type { SaveDialogOptions } from "electron";
-import { execFile, spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
-
-import fs from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
+import fs from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import type { SaveDialogOptions } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, shell } from "electron";
+import { hideCursor, showCursor } from "../cursorHider";
+import { RECORDINGS_DIR } from "../main";
+import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
 import type {
 	CursorTelemetryPoint,
 	NativeMacRecordingOptions,
 	RecordingSessionData,
 	SelectedSource,
 } from "./contracts";
-import { buildNativeMacCaptureConfig, shouldBlockOwnWindowCapture } from "./macCapture";
-import {
-	getNativeCaptureInterruption,
-	mixNativeMacAudioTracks,
-	waitForNativeCaptureStart,
-	waitForNativeCaptureStop,
-} from "./macRecordingLifecycle";
+import { createCursorMonitorRuntime } from "./cursorMonitorRuntime";
+import type { HookMouseEventLike, WindowBounds } from "./cursorTelemetry";
 import {
 	clamp,
 	getHookCursorScreenPoint,
 	getHookMouseButton,
-	getWindowBoundsFromNativeSource,
 	mergePendingCursorSamples,
 	normalizeCursorPointForBounds,
 } from "./cursorTelemetry";
-import type { HookMouseEventLike, WindowBounds } from "./cursorTelemetry";
+import { buildNativeMacCaptureConfig, shouldBlockOwnWindowCapture } from "./macCapture";
 import {
 	getAccessibilityPermissionStatus,
 	getScreenRecordingPermissionStatus,
@@ -39,12 +35,19 @@ import {
 	requestAccessibilityPermission,
 } from "./macPermissions";
 import {
+	getNativeCaptureInterruption,
+	mixNativeMacAudioTracks,
+	waitForNativeCaptureStart,
+	waitForNativeCaptureStop,
+} from "./macRecordingLifecycle";
+import {
 	ensureNativeCaptureHelperBinary,
 	ensureNativeCursorMonitorBinary,
 	getNativeMacWindowSources,
 	getSystemCursorAssets,
 	resolveUnpackedAppPath,
 } from "./nativeHelpers";
+import { showSourceHighlight } from "./sourceHighlight";
 import {
 	buildElectronWindowSources,
 	buildMacWindowSources,
@@ -52,9 +55,12 @@ import {
 	collectOwnWindowNames,
 	normalizeDesktopSourceName,
 } from "./sourceSelection";
-import { RECORDINGS_DIR } from "../main";
-import { hideCursor, showCursor } from "../cursorHider";
-import { createCountdownWindow, getCountdownWindow, closeCountdownWindow } from "../windows";
+import {
+	createSelectedWindowBoundsTracker,
+	getDisplayBoundsForSource,
+	parseWindowId,
+	resolveLinuxWindowBounds,
+} from "./windowBounds";
 
 const execFileAsync = promisify(execFile);
 const nodeRequire = createRequire(import.meta.url);
@@ -91,8 +97,6 @@ let nativeCaptureTargetPath: string | null = null;
 let nativeCaptureStopRequested = false;
 let nativeCaptureMicrophonePath: string | null = null;
 let nativeCapturePaused = false;
-let nativeCursorMonitorProcess: ChildProcessWithoutNullStreams | null = null;
-let nativeCursorMonitorOutputBuffer = "";
 let windowsCaptureProcess: ChildProcessWithoutNullStreams | null = null;
 let windowsCaptureOutputBuffer = "";
 let windowsCaptureTargetPath: string | null = null;
@@ -405,12 +409,6 @@ async function pruneAutoRecordings(exemptPaths: string[] = []) {
 	}
 }
 
-function parseWindowId(sourceId?: string) {
-	if (!sourceId) return null;
-	const match = sourceId.match(/^window:(\d+)/);
-	return match ? Number.parseInt(match[1], 10) : null;
-}
-
 function loadFfmpegStatic() {
 	const moduleExports = nodeRequire("ffmpeg-static");
 	if (typeof moduleExports === "string") {
@@ -424,16 +422,39 @@ function loadFfmpegStatic() {
 	return null;
 }
 
+type UiohookLike = {
+	on?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	off?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	removeListener?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	start?: () => void;
+	stop?: () => void;
+};
+
 function loadUiohookModule() {
-	const moduleExports = nodeRequire("uiohook-napi");
+	const moduleExports = nodeRequire("uiohook-napi") as {
+		uIOhook?: UiohookLike;
+		uiohook?: UiohookLike;
+		Uiohook?: UiohookLike;
+		default?: UiohookLike | { uIOhook?: UiohookLike; uiohook?: UiohookLike };
+	};
+	const defaultExport = moduleExports.default;
+	const nestedDefaultExport =
+		typeof defaultExport === "object" && defaultExport !== null
+			? (defaultExport as { uIOhook?: UiohookLike; uiohook?: UiohookLike })
+			: null;
+	const directDefaultExport =
+		typeof defaultExport === "object" && defaultExport !== null
+			? (defaultExport as UiohookLike)
+			: null;
+
 	return (
-		(moduleExports as any)?.uIOhook ??
-		(moduleExports as any)?.uiohook ??
-		(moduleExports as any)?.Uiohook ??
-		(moduleExports as any)?.default?.uIOhook ??
-		(moduleExports as any)?.default?.uiohook ??
-		(moduleExports as any)?.default ??
-		moduleExports
+		moduleExports.uIOhook ??
+		moduleExports.uiohook ??
+		moduleExports.Uiohook ??
+		nestedDefaultExport?.uIOhook ??
+		nestedDefaultExport?.uiohook ??
+		directDefaultExport ??
+		null
 	);
 }
 
@@ -444,7 +465,7 @@ function getFfmpegBinaryPath() {
 	}
 
 	if (app.isPackaged) {
-		return ffmpegStatic.replace(/\.asar([\/\\])/, ".asar.unpacked$1");
+		return ffmpegStatic.replace(/\.asar([/\\])/, ".asar.unpacked$1");
 	}
 
 	return ffmpegStatic;
@@ -525,70 +546,6 @@ function waitForFfmpegCaptureStop(process: ChildProcessWithoutNullStreams, outpu
 	});
 }
 
-function getDisplayBoundsForSource(source: SelectedSource) {
-	const sourceDisplayId = Number(source?.display_id);
-	if (Number.isFinite(sourceDisplayId)) {
-		const matched = getScreen()
-			.getAllDisplays()
-			.find((display) => display.id === sourceDisplayId);
-		if (matched) {
-			return matched.bounds;
-		}
-	}
-
-	return getScreen().getPrimaryDisplay().bounds;
-}
-
-function parseXwininfoBounds(stdout: string): WindowBounds | null {
-	const absX = stdout.match(/Absolute upper-left X:\s+(-?\d+)/);
-	const absY = stdout.match(/Absolute upper-left Y:\s+(-?\d+)/);
-	const width = stdout.match(/Width:\s+(\d+)/);
-	const height = stdout.match(/Height:\s+(\d+)/);
-
-	if (!absX || !absY || !width || !height) {
-		return null;
-	}
-
-	return {
-		x: Number.parseInt(absX[1], 10),
-		y: Number.parseInt(absY[1], 10),
-		width: Number.parseInt(width[1], 10),
-		height: Number.parseInt(height[1], 10),
-	};
-}
-
-async function resolveLinuxWindowBounds(source: SelectedSource): Promise<WindowBounds | null> {
-	const windowId = parseWindowId(source?.id);
-
-	if (windowId) {
-		try {
-			const { stdout } = await execFileAsync("xwininfo", ["-id", String(windowId)], {
-				timeout: 1500,
-			});
-			const bounds = parseXwininfoBounds(stdout);
-			if (bounds && bounds.width > 0 && bounds.height > 0) {
-				return bounds;
-			}
-		} catch {
-			// fall back to title lookup below
-		}
-	}
-
-	const windowTitle =
-		typeof source.windowTitle === "string" ? source.windowTitle.trim() : source.name.trim();
-	if (!windowTitle) {
-		return null;
-	}
-
-	try {
-		const { stdout } = await execFileAsync("xwininfo", ["-name", windowTitle], { timeout: 1500 });
-		const bounds = parseXwininfoBounds(stdout);
-		return bounds && bounds.width > 0 && bounds.height > 0 ? bounds : null;
-	} catch {
-		return null;
-	}
-}
-
 async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string) {
 	const commonOutputArgs = [
 		"-an",
@@ -663,7 +620,11 @@ async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string
 			];
 		}
 
-		const bounds = getDisplayBoundsForSource(source);
+		const bounds = getDisplayBoundsForSource(
+			source,
+			getScreen().getAllDisplays(),
+			getScreen().getPrimaryDisplay().bounds,
+		);
 		return [
 			"-y",
 			"-f",
@@ -926,7 +887,9 @@ async function muxNativeWindowsVideoWithAudio(
 	// Clean up audio files
 	for (const audioPath of [systemAudioPath, micAudioPath]) {
 		if (audioPath) {
-			await fs.rm(audioPath, { force: true }).catch(() => {});
+			await fs.rm(audioPath, { force: true }).catch(() => {
+				// ignore cleanup failures
+			});
 		}
 	}
 }
@@ -989,106 +952,43 @@ function attachNativeCaptureLifecycle(process: ChildProcessWithoutNullStreams) {
 	});
 }
 
-function handleCursorMonitorStdout(chunk: Buffer) {
-	nativeCursorMonitorOutputBuffer += chunk.toString();
-	const lines = nativeCursorMonitorOutputBuffer.split(/\r?\n/);
-	nativeCursorMonitorOutputBuffer = lines.pop() ?? "";
-
-	for (const line of lines) {
-		const match = line.match(/^STATE:(.+)$/);
-		if (!match) continue;
-		const next = match[1].trim() as CursorVisualType;
-		if (
-			next === "arrow" ||
-			next === "text" ||
-			next === "pointer" ||
-			next === "crosshair" ||
-			next === "open-hand" ||
-			next === "closed-hand" ||
-			next === "resize-ew" ||
-			next === "resize-ns" ||
-			next === "not-allowed"
-		) {
-			if (currentCursorVisualType !== next) {
-				currentCursorVisualType = next;
-				sampleCursorStateChange(next);
-				emitCursorStateChanged(next);
-			}
+async function resolveCursorMonitorHelperPath() {
+	if (process.platform === "win32") {
+		const helperPath = getCursorMonitorExePath();
+		try {
+			await fs.access(helperPath, fsConstants.X_OK);
+			return helperPath;
+		} catch {
+			console.warn("Windows cursor monitor helper missing or not executable:", helperPath);
+			return null;
 		}
 	}
+
+	return ensureNativeCursorMonitorBinary();
 }
 
+const cursorMonitorRuntime = createCursorMonitorRuntime({
+	platform: process.platform,
+	resolveHelperPath: resolveCursorMonitorHelperPath,
+	getCurrentCursorType: () => currentCursorVisualType,
+	setCurrentCursorType: (cursorType) => {
+		currentCursorVisualType = cursorType;
+	},
+	onCursorTypeDetected: (cursorType) => {
+		sampleCursorStateChange(cursorType);
+		emitCursorStateChanged(cursorType);
+	},
+	onWarning: (message, error) => {
+		console.warn(message, error);
+	},
+});
+
 async function startNativeCursorMonitor() {
-	stopNativeCursorMonitor();
-
-	if (process.platform !== "darwin" && process.platform !== "win32") {
-		currentCursorVisualType = "arrow";
-		return;
-	}
-
-	try {
-		let helperPath: string;
-		if (process.platform === "win32") {
-			helperPath = getCursorMonitorExePath();
-			try {
-				await fs.access(helperPath, fsConstants.X_OK);
-			} catch {
-				console.warn("Windows cursor monitor helper missing or not executable:", helperPath);
-				currentCursorVisualType = "arrow";
-				return;
-			}
-		} else {
-			helperPath = await ensureNativeCursorMonitorBinary();
-		}
-
-		nativeCursorMonitorOutputBuffer = "";
-		currentCursorVisualType = "arrow";
-		nativeCursorMonitorProcess = spawn(helperPath, [], {
-			stdio: ["pipe", "pipe", "pipe"],
-		});
-
-		nativeCursorMonitorProcess.once("error", (error) => {
-			console.warn("Native cursor monitor process error:", error);
-			nativeCursorMonitorProcess = null;
-			nativeCursorMonitorOutputBuffer = "";
-			currentCursorVisualType = "arrow";
-		});
-
-		nativeCursorMonitorProcess.stdout.on("data", handleCursorMonitorStdout);
-
-		nativeCursorMonitorProcess.once("close", () => {
-			nativeCursorMonitorProcess = null;
-			nativeCursorMonitorOutputBuffer = "";
-			currentCursorVisualType = "arrow";
-		});
-	} catch (error) {
-		console.warn("Failed to start native cursor monitor:", error);
-		nativeCursorMonitorProcess = null;
-		nativeCursorMonitorOutputBuffer = "";
-		currentCursorVisualType = "arrow";
-	}
+	await cursorMonitorRuntime.start();
 }
 
 function stopNativeCursorMonitor() {
-	currentCursorVisualType = "arrow";
-
-	if (!nativeCursorMonitorProcess) {
-		return;
-	}
-
-	try {
-		nativeCursorMonitorProcess.stdin.write("stop\n");
-	} catch {
-		// ignore stop signal issues
-	}
-	try {
-		nativeCursorMonitorProcess.kill();
-	} catch {
-		// ignore kill issues
-	}
-
-	nativeCursorMonitorProcess = null;
-	nativeCursorMonitorOutputBuffer = "";
+	cursorMonitorRuntime.stop();
 }
 
 async function moveFileWithOverwrite(sourcePath: string, destinationPath: string) {
@@ -1137,7 +1037,14 @@ let hasLoggedInteractionHookFailure = false;
 let lastLeftClick: { timeMs: number; cx: number; cy: number } | null = null;
 let linuxCursorScreenPoint: { x: number; y: number; updatedAt: number } | null = null;
 let selectedWindowBounds: WindowBounds | null = null;
-let windowBoundsCaptureInterval: NodeJS.Timeout | null = null;
+const selectedWindowBoundsTracker = createSelectedWindowBoundsTracker({
+	platform: process.platform,
+	getSelectedSource: () => selectedSource,
+	setSelectedWindowBounds: (bounds) => {
+		selectedWindowBounds = bounds;
+	},
+	getNativeWindowSources: getNativeMacWindowSources,
+});
 
 function stopCursorCapture() {
 	if (cursorCaptureInterval) {
@@ -1154,59 +1061,11 @@ function stopInteractionCapture() {
 }
 
 function stopWindowBoundsCapture() {
-	if (windowBoundsCaptureInterval) {
-		clearInterval(windowBoundsCaptureInterval);
-		windowBoundsCaptureInterval = null;
-	}
-	selectedWindowBounds = null;
-}
-
-async function resolveMacWindowBounds(source: SelectedSource): Promise<WindowBounds | null> {
-	const windowId = parseWindowId(source.id);
-	if (!windowId) {
-		return null;
-	}
-
-	try {
-		const nativeSources = await getNativeMacWindowSources({ maxAgeMs: 250 });
-		const matchedSource = nativeSources.find((entry) => parseWindowId(entry.id) === windowId);
-		return getWindowBoundsFromNativeSource(matchedSource);
-	} catch {
-		return null;
-	}
-}
-
-async function refreshSelectedWindowBounds() {
-	if (!selectedSource?.id?.startsWith("window:")) {
-		selectedWindowBounds = null;
-		return;
-	}
-
-	let bounds: WindowBounds | null = null;
-
-	if (process.platform === "darwin") {
-		bounds = await resolveMacWindowBounds(selectedSource);
-	} else if (process.platform === "linux") {
-		bounds = await resolveLinuxWindowBounds(selectedSource);
-	}
-
-	selectedWindowBounds = bounds;
+	selectedWindowBoundsTracker.stop();
 }
 
 function startWindowBoundsCapture() {
-	stopWindowBoundsCapture();
-
-	if (
-		!["darwin", "linux"].includes(process.platform) ||
-		!selectedSource?.id?.startsWith("window:")
-	) {
-		return;
-	}
-
-	void refreshSelectedWindowBounds();
-	windowBoundsCaptureInterval = setInterval(() => {
-		void refreshSelectedWindowBounds();
-	}, 250);
+	selectedWindowBoundsTracker.start();
 }
 
 function getNormalizedCursorPoint() {
@@ -1504,173 +1363,16 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("show-source-highlight", async (_, source: SelectedSource) => {
 		try {
-			const isWindow = source.id?.startsWith("window:");
-			const windowId = isWindow ? parseWindowId(source.id) : null;
-
-			// ── 1. Bring window to front & get its bounds via AppleScript ──
-			let asBounds: { x: number; y: number; width: number; height: number } | null = null;
-
-			if (isWindow && process.platform === "darwin") {
-				const appName = source.appName || source.name?.split(" — ")[0]?.trim();
-				if (appName) {
-					// Single AppleScript: activate AND return window bounds
-					try {
-						const { stdout } = await execFileAsync(
-							"osascript",
-							[
-								"-e",
-								`tell application "${appName}"\n` +
-									`  activate\n` +
-									`end tell\n` +
-									`delay 0.3\n` +
-									`tell application "System Events"\n` +
-									`  tell process "${appName}"\n` +
-									`    set frontWindow to front window\n` +
-									`    set {x1, y1} to position of frontWindow\n` +
-									`    set {w1, h1} to size of frontWindow\n` +
-									`    return (x1 as text) & "," & (y1 as text) & "," & (w1 as text) & "," & (h1 as text)\n` +
-									`  end tell\n` +
-									`end tell`,
-							],
-							{ timeout: 4000 },
-						);
-						const parts = stdout.trim().split(",").map(Number);
-						if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
-							asBounds = { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
-						}
-					} catch {
-						// Fallback: just activate without bounds
-						try {
-							await execFileAsync(
-								"osascript",
-								["-e", `tell application "${appName}" to activate`],
-								{ timeout: 2000 },
-							);
-							await new Promise((resolve) => setTimeout(resolve, 350));
-						} catch {
-							/* ignore */
-						}
-					}
-				}
-			} else if (windowId && process.platform === "linux") {
-				try {
-					await execFileAsync("wmctrl", ["-i", "-a", `0x${windowId.toString(16)}`], {
-						timeout: 1500,
-					});
-				} catch {
-					try {
-						await execFileAsync("xdotool", ["windowactivate", String(windowId)], { timeout: 1500 });
-					} catch {
-						/* not available */
-					}
-				}
-				await new Promise((resolve) => setTimeout(resolve, 250));
-			}
-
-			// ── 2. Resolve bounds ──
-			let bounds = asBounds;
-
-			if (!bounds) {
-				if (source.id?.startsWith("screen:")) {
-					bounds = getDisplayBoundsForSource(source);
-				} else if (isWindow) {
-					if (process.platform === "darwin") {
-						bounds = await resolveMacWindowBounds(source);
-					} else if (process.platform === "linux") {
-						bounds = await resolveLinuxWindowBounds(source);
-					}
-				}
-			}
-
-			if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
-				bounds = getDisplayBoundsForSource(source);
-			}
-
-			// ── 3. Show traveling wave highlight ──
-			const pad = 6;
-			const highlightWin = new BrowserWindow({
-				x: bounds.x - pad,
-				y: bounds.y - pad,
-				width: bounds.width + pad * 2,
-				height: bounds.height + pad * 2,
-				frame: false,
-				transparent: true,
-				alwaysOnTop: true,
-				skipTaskbar: true,
-				hasShadow: false,
-				resizable: false,
-				focusable: false,
-				webPreferences: { nodeIntegration: false, contextIsolation: true },
+			await showSourceHighlight(source, {
+				platform: process.platform,
+				getDisplayBounds: (candidateSource) =>
+					getDisplayBoundsForSource(
+						candidateSource,
+						getScreen().getAllDisplays(),
+						getScreen().getPrimaryDisplay().bounds,
+					),
+				getNativeWindowSources: getNativeMacWindowSources,
 			});
-
-			highlightWin.setIgnoreMouseEvents(true);
-
-			const html = `<!DOCTYPE html>
-<html><head><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:transparent;overflow:hidden;width:100vw;height:100vh}
-
-.border-wrap{
-  position:fixed;inset:0;border-radius:10px;padding:3px;
-  background:conic-gradient(from var(--angle,0deg),
-    transparent 0%,
-    transparent 60%,
-    rgba(99,96,245,.15) 70%,
-    rgba(99,96,245,.9) 80%,
-    rgba(123,120,255,1) 85%,
-    rgba(99,96,245,.9) 90%,
-    rgba(99,96,245,.15) 95%,
-    transparent 100%
-  );
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
-  animation:spin 1.2s linear forwards, fadeAll 1.6s ease-out forwards;
-}
-
-.glow-wrap{
-  position:fixed;inset:-4px;border-radius:14px;padding:6px;
-  background:conic-gradient(from var(--angle,0deg),
-    transparent 0%,
-    transparent 65%,
-    rgba(99,96,245,.3) 78%,
-    rgba(123,120,255,.5) 85%,
-    rgba(99,96,245,.3) 92%,
-    transparent 100%
-  );
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
-  filter:blur(8px);
-  animation:spin 1.2s linear forwards, fadeAll 1.6s ease-out forwards;
-}
-
-@property --angle{
-  syntax:'<angle>';
-  initial-value:0deg;
-  inherits:false;
-}
-
-@keyframes spin{
-  0%{--angle:0deg}
-  100%{--angle:360deg}
-}
-
-@keyframes fadeAll{
-  0%,60%{opacity:1}
-  100%{opacity:0}
-}
-</style></head><body>
-<div class="glow-wrap"></div>
-<div class="border-wrap"></div>
-</body></html>`;
-
-			await highlightWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
-			setTimeout(() => {
-				if (!highlightWin.isDestroyed()) highlightWin.close();
-			}, 1700);
-
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to show source highlight:", error);
@@ -2869,7 +2571,9 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 			await fs.unlink(filePath);
 			// Also delete the cursor telemetry sidecar if it exists
 			const telemetryPath = getTelemetryPathForVideo(filePath);
-			await fs.unlink(telemetryPath).catch(() => {});
+			await fs.unlink(telemetryPath).catch(() => {
+				// ignore missing telemetry sidecars
+			});
 			if (currentVideoPath === filePath) {
 				currentVideoPath = null;
 				currentRecordingSession = null;
