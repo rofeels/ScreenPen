@@ -27,16 +27,16 @@ describe("sourceHighlight helpers", () => {
 	});
 
 	it("builds padded BrowserWindow options for the highlight overlay", () => {
-		expect(buildSourceHighlightWindowOptions({ x: 20, y: 30, width: 200, height: 100 }, 8)).toMatchObject(
-			{
-				x: 12,
-				y: 22,
-				width: 216,
-				height: 116,
-				focusable: false,
-				transparent: true,
-			},
-		);
+		expect(
+			buildSourceHighlightWindowOptions({ x: 20, y: 30, width: 200, height: 100 }, 8),
+		).toMatchObject({
+			x: 12,
+			y: 22,
+			width: 216,
+			height: 116,
+			focusable: false,
+			transparent: true,
+		});
 	});
 
 	it("prefers AppleScript bounds before falling back to display bounds", async () => {
@@ -68,9 +68,9 @@ describe("sourceHighlight helpers", () => {
 				{
 					platform: "darwin",
 					getDisplayBounds,
-					getNativeWindowSources: vi.fn().mockResolvedValue([
-						{ id: "window:9", name: "Docs", x: 0, y: 0, width: 0, height: 0 },
-					]),
+					getNativeWindowSources: vi
+						.fn()
+						.mockResolvedValue([{ id: "window:9", name: "Docs", x: 0, y: 0, width: 0, height: 0 }]),
 					execFileAsync: vi.fn().mockRejectedValue(new Error("activate failed")) as never,
 					wait: vi.fn().mockResolvedValue(undefined),
 				},

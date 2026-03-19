@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { SelectedSource } from "./contracts";
-import { getWindowBoundsFromNativeSource } from "./cursorTelemetry";
 import type { WindowBounds } from "./cursorTelemetry";
+import { getWindowBoundsFromNativeSource } from "./cursorTelemetry";
 import type { NativeMacWindowSource } from "./nativeHelpers";
 
 const execFileAsync = promisify(execFile);
@@ -13,9 +13,9 @@ export type DisplayBoundsLike = {
 	bounds: WindowBounds;
 };
 
-export type NativeWindowSourcesGetter = (
-	options?: { maxAgeMs?: number },
-) => Promise<NativeMacWindowSource[]>;
+export type NativeWindowSourcesGetter = (options?: {
+	maxAgeMs?: number;
+}) => Promise<NativeMacWindowSource[]>;
 
 export function parseWindowId(sourceId?: string) {
 	if (!sourceId) {

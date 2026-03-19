@@ -14,7 +14,11 @@ describe("windowBounds helpers", () => {
 	it("parses window ids and xwininfo bounds", () => {
 		expect(parseWindowId("window:42")).toBe(42);
 		expect(parseWindowId("screen:3")).toBeNull();
-		expect(parseXwininfoBounds("Absolute upper-left X: 10\nAbsolute upper-left Y: 20\nWidth: 300\nHeight: 400")).toEqual({
+		expect(
+			parseXwininfoBounds(
+				"Absolute upper-left X: 10\nAbsolute upper-left Y: 20\nWidth: 300\nHeight: 400",
+			),
+		).toEqual({
 			x: 10,
 			y: 20,
 			width: 300,
@@ -31,10 +35,18 @@ describe("windowBounds helpers", () => {
 		const primaryBounds = { x: 10, y: 20, width: 1280, height: 720 };
 
 		expect(
-			getDisplayBoundsForSource({ id: "screen:1", name: "Display", display_id: "5" }, displays, primaryBounds),
+			getDisplayBoundsForSource(
+				{ id: "screen:1", name: "Display", display_id: "5" },
+				displays,
+				primaryBounds,
+			),
 		).toEqual(displays[0]?.bounds);
 		expect(
-			getDisplayBoundsForSource({ id: "screen:1", name: "Display", display_id: "99" }, displays, primaryBounds),
+			getDisplayBoundsForSource(
+				{ id: "screen:1", name: "Display", display_id: "99" },
+				displays,
+				primaryBounds,
+			),
 		).toEqual(primaryBounds);
 	});
 
@@ -42,13 +54,11 @@ describe("windowBounds helpers", () => {
 		const execFileAsync = vi
 			.fn()
 			.mockResolvedValueOnce({
-				stdout:
-					"Absolute upper-left X: 1\nAbsolute upper-left Y: 2\nWidth: 300\nHeight: 200\n",
+				stdout: "Absolute upper-left X: 1\nAbsolute upper-left Y: 2\nWidth: 300\nHeight: 200\n",
 			})
 			.mockRejectedValueOnce(new Error("missing id"))
 			.mockResolvedValueOnce({
-				stdout:
-					"Absolute upper-left X: 10\nAbsolute upper-left Y: 20\nWidth: 500\nHeight: 600\n",
+				stdout: "Absolute upper-left X: 10\nAbsolute upper-left Y: 20\nWidth: 500\nHeight: 600\n",
 			});
 
 		expect(
@@ -77,10 +87,7 @@ describe("windowBounds helpers", () => {
 		]);
 
 		expect(
-			await resolveMacWindowBounds(
-				{ id: "window:11", name: "Docs" },
-				{ getNativeWindowSources },
-			),
+			await resolveMacWindowBounds({ id: "window:11", name: "Docs" }, { getNativeWindowSources }),
 		).toEqual({ x: 9, y: 8, width: 300, height: 250 });
 	});
 

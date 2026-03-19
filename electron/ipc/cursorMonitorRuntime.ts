@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { CursorVisualType } from "./cursorTelemetry";
 
 const CURSOR_VISUAL_TYPES = new Set<CursorVisualType>([
@@ -20,8 +20,9 @@ export function consumeCursorMonitorOutput(buffer: string, chunk: Buffer | strin
 	const remainder = lines.pop() ?? "";
 	const cursorStates = lines
 		.map((line) => line.match(/^STATE:(.+)$/)?.[1]?.trim())
-		.filter((value): value is CursorVisualType =>
-			value != null && CURSOR_VISUAL_TYPES.has(value as CursorVisualType),
+		.filter(
+			(value): value is CursorVisualType =>
+				value != null && CURSOR_VISUAL_TYPES.has(value as CursorVisualType),
 		);
 
 	return {

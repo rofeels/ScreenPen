@@ -1,27 +1,24 @@
-import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog } from "electron";
-import type { SaveDialogOptions } from "electron";
-import { execFile, spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
-
-import fs from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
+import fs from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import type { SaveDialogOptions } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, shell } from "electron";
+import { hideCursor, showCursor } from "../cursorHider";
+import { RECORDINGS_DIR } from "../main";
+import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
 import type {
 	CursorTelemetryPoint,
 	NativeMacRecordingOptions,
 	RecordingSessionData,
 	SelectedSource,
 } from "./contracts";
-import { buildNativeMacCaptureConfig, shouldBlockOwnWindowCapture } from "./macCapture";
-import {
-	getNativeCaptureInterruption,
-	mixNativeMacAudioTracks,
-	waitForNativeCaptureStart,
-	waitForNativeCaptureStop,
-} from "./macRecordingLifecycle";
+import { createCursorMonitorRuntime } from "./cursorMonitorRuntime";
+import type { HookMouseEventLike, WindowBounds } from "./cursorTelemetry";
 import {
 	clamp,
 	getHookCursorScreenPoint,
@@ -29,8 +26,7 @@ import {
 	mergePendingCursorSamples,
 	normalizeCursorPointForBounds,
 } from "./cursorTelemetry";
-import { createCursorMonitorRuntime } from "./cursorMonitorRuntime";
-import type { HookMouseEventLike, WindowBounds } from "./cursorTelemetry";
+import { buildNativeMacCaptureConfig, shouldBlockOwnWindowCapture } from "./macCapture";
 import {
 	getAccessibilityPermissionStatus,
 	getScreenRecordingPermissionStatus,
@@ -39,12 +35,19 @@ import {
 	requestAccessibilityPermission,
 } from "./macPermissions";
 import {
+	getNativeCaptureInterruption,
+	mixNativeMacAudioTracks,
+	waitForNativeCaptureStart,
+	waitForNativeCaptureStop,
+} from "./macRecordingLifecycle";
+import {
 	ensureNativeCaptureHelperBinary,
 	ensureNativeCursorMonitorBinary,
 	getNativeMacWindowSources,
 	getSystemCursorAssets,
 	resolveUnpackedAppPath,
 } from "./nativeHelpers";
+import { showSourceHighlight } from "./sourceHighlight";
 import {
 	buildElectronWindowSources,
 	buildMacWindowSources,
@@ -52,16 +55,12 @@ import {
 	collectOwnWindowNames,
 	normalizeDesktopSourceName,
 } from "./sourceSelection";
-import { showSourceHighlight } from "./sourceHighlight";
 import {
 	createSelectedWindowBoundsTracker,
 	getDisplayBoundsForSource,
 	parseWindowId,
 	resolveLinuxWindowBounds,
 } from "./windowBounds";
-import { RECORDINGS_DIR } from "../main";
-import { hideCursor, showCursor } from "../cursorHider";
-import { createCountdownWindow, getCountdownWindow, closeCountdownWindow } from "../windows";
 
 const execFileAsync = promisify(execFile);
 const nodeRequire = createRequire(import.meta.url);
@@ -424,14 +423,24 @@ function loadFfmpegStatic() {
 }
 
 function loadUiohookModule() {
-	const moduleExports = nodeRequire("uiohook-napi");
+	const moduleExports = nodeRequire("uiohook-napi") as {
+		uIOhook?: unknown;
+		uiohook?: unknown;
+		Uiohook?: unknown;
+		default?: unknown;
+	};
+	const defaultExport =
+		typeof moduleExports.default === "object" && moduleExports.default !== null
+			? (moduleExports.default as { uIOhook?: unknown; uiohook?: unknown })
+			: null;
+
 	return (
-		(moduleExports as any)?.uIOhook ??
-		(moduleExports as any)?.uiohook ??
-		(moduleExports as any)?.Uiohook ??
-		(moduleExports as any)?.default?.uIOhook ??
-		(moduleExports as any)?.default?.uiohook ??
-		(moduleExports as any)?.default ??
+		moduleExports.uIOhook ??
+		moduleExports.uiohook ??
+		moduleExports.Uiohook ??
+		defaultExport?.uIOhook ??
+		defaultExport?.uiohook ??
+		moduleExports.default ??
 		moduleExports
 	);
 }
@@ -443,7 +452,7 @@ function getFfmpegBinaryPath() {
 	}
 
 	if (app.isPackaged) {
-		return ffmpegStatic.replace(/\.asar([\/\\])/, ".asar.unpacked$1");
+		return ffmpegStatic.replace(/\.asar([/\\])/, ".asar.unpacked$1");
 	}
 
 	return ffmpegStatic;
@@ -865,7 +874,9 @@ async function muxNativeWindowsVideoWithAudio(
 	// Clean up audio files
 	for (const audioPath of [systemAudioPath, micAudioPath]) {
 		if (audioPath) {
-			await fs.rm(audioPath, { force: true }).catch(() => {});
+			await fs.rm(audioPath, { force: true }).catch(() => {
+				// ignore cleanup failures
+			});
 		}
 	}
 }
@@ -2547,7 +2558,9 @@ export function registerIpcHandlers(
 			await fs.unlink(filePath);
 			// Also delete the cursor telemetry sidecar if it exists
 			const telemetryPath = getTelemetryPathForVideo(filePath);
-			await fs.unlink(telemetryPath).catch(() => {});
+			await fs.unlink(telemetryPath).catch(() => {
+				// ignore missing telemetry sidecars
+			});
 			if (currentVideoPath === filePath) {
 				currentVideoPath = null;
 				currentRecordingSession = null;

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import type { BrowserWindowConstructorOptions } from "electron";
 import { promisify } from "node:util";
+import type { BrowserWindowConstructorOptions } from "electron";
 import type { SelectedSource } from "./contracts";
 import type { WindowBounds } from "./cursorTelemetry";
 import type { NativeWindowSourcesGetter } from "./windowBounds";
@@ -165,11 +165,9 @@ async function activateMacWindowForHighlight(
 		return parseAppleScriptBounds(String(stdout));
 	} catch {
 		try {
-			await execFileAsyncImpl(
-				"osascript",
-				["-e", `tell application "${appName}" to activate`],
-				{ timeout: 2000 },
-			);
+			await execFileAsyncImpl("osascript", ["-e", `tell application "${appName}" to activate`], {
+				timeout: 2000,
+			});
 			await wait(350);
 		} catch {
 			/* ignore */
