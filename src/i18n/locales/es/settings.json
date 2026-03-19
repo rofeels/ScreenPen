@@ -53,7 +53,8 @@
 		"gradient": "Degradado",
 		"uploadCustom": "Subir personalizado",
 		"uploadSuccess": "¡Imagen personalizada subida exitosamente!",
-		"uploadError": "Por favor sube un archivo de imagen JPG o JPEG."
+		"uploadError": "Por favor sube un archivo de imagen JPG o JPEG.",
+		"uploadErrorDescription": "Sube un archivo de imagen JPG o JPEG."
 	},
 	"export": {
 		"mp4": "MP4",
@@ -70,6 +71,11 @@
 		"saveProject": "Guardar proyecto",
 		"exportVideo": "Exportar {{format}}",
 		"reportBug": "Reportar error",
-		"starOnGithub": "Estrella en GitHub"
+		"starOnGithub": "Estrella en GitHub",
+		"sizePreset": {
+			"medium": "720p",
+			"large": "1080p",
+			"original": "Original"
+		}
 	}
 }

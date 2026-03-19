@@ -35,7 +35,14 @@
 		"tipCycleForward": "Use Tab to cycle through overlapping items.",
 		"tipCycleBackward": "Use Shift+Tab to cycle backwards.",
 		"imageUploadSuccess": "Image uploaded successfully!",
-		"imageUploadError": "Please upload a JPG, PNG, GIF, or WebP image file."
+		"imageUploadError": "Please upload a JPG, PNG, GIF, or WebP image file.",
+		"imageUploadErrorDescription": "Please upload a JPG, PNG, GIF, or WebP image file.",
+		"imageUploadFailed": "Failed to upload image",
+		"imageUploadFailedDescription": "There was an error reading the selected image.",
+		"overlayAlt": "Annotation",
+		"noImage": "No image",
+		"noArrowData": "No arrow data",
+		"defaultText": "Enter text..."
 	},
 	"fontStyles": {
 		"classic": "Classic",
@@ -87,5 +94,32 @@
 		"cycleAnnotations": "Cycle Annotations",
 		"tab": "Tab"
 	},
-	"openRecordingsFolder": "Open recordings folder"
+	"openRecordingsFolder": "Open recordings folder",
+	"messages": {
+		"noVideoToLoad": "No video to load. Please record or select a video.",
+		"errorLoadingVideo": "Error loading video: {{error}}",
+		"noVideoLoaded": "No video loaded",
+		"videoNotReady": "Video not ready",
+		"unableToDetermineSourceVideoPath": "Unable to determine source video path",
+		"failedToOpenRecordingsFolder": "Failed to open recordings folder."
+	},
+	"project": {
+		"saveCanceled": "Project save canceled",
+		"saveFailed": "Failed to save project",
+		"savedTo": "Project saved to {{path}}",
+		"loadFailed": "Failed to load project",
+		"invalidFormat": "Invalid project file format",
+		"loadedFrom": "Project loaded from {{path}}",
+		"loadProjectFile": "Load Project File"
+	},
+	"export": {
+		"exportedTo": "Exported successfully to {{path}}",
+		"saveDialogCanceledRetry": "Save dialog canceled. Click Save Again to save without re-rendering.",
+		"saveCanceledRetry": "Save canceled. You can save again without re-exporting.",
+		"saveCanceledTryAgain": "Save canceled. You can try again.",
+		"failedToSaveGif": "Failed to save GIF",
+		"failedToSaveVideo": "Failed to save video",
+		"failedGeneric": "Export failed",
+		"failedWithReason": "Export failed: {{error}}"
+	}
 }

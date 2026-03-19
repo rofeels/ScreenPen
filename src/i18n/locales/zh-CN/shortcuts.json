@@ -12,5 +12,9 @@
 		"deleteSelectedAlt": "删除选中（替代）",
 		"panTimeline": "平移时间线",
 		"zoomTimeline": "缩放时间线"
+	},
+	"bindings": {
+		"panTimeline": "Shift + Ctrl + 滚轮",
+		"zoomTimeline": "Ctrl + 滚轮"
 	}
 }

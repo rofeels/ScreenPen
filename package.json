@@ -31,8 +31,11 @@
 		"build:win": "npm run build:platform-native-helpers && tsc && vite build && electron-builder --win",
 		"build:linux": "npm run build:platform-native-helpers && tsc && vite build && electron-builder --linux",
 		"i18n:check": "node scripts/i18n-check.mjs",
+		"typecheck": "tsc --noEmit",
+		"verify": "npm run lint:verify && npm run typecheck && npm run i18n:check && npm test",
 		"test": "vitest --run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"lint:verify": "biome check scripts/i18n-check.mjs src/contexts/I18nContext.tsx src/contexts/I18nContext.test.ts src/components/launch/LaunchWindow.tsx src/components/launch/SourceSelector.tsx src/components/video-editor/AnnotationOverlay.tsx src/components/video-editor/KeyboardShortcutsHelp.tsx src/components/video-editor/SettingsPanel.tsx src/components/video-editor/VideoEditor.tsx src/components/video-editor/timeline/TimelineEditor.tsx src/i18n package.json .github/workflows/verify.yml"
 	},
 	"dependencies": {
 		"@fix-webm-duration/fix": "^1.0.1",

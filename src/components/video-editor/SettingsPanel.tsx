@@ -47,15 +47,15 @@ import type {
 	ZoomDepth,
 } from "./types";
 import {
-	DEFAULT_WEBCAM_CORNER_RADIUS,
-	DEFAULT_WEBCAM_REACT_TO_ZOOM,
-	DEFAULT_WEBCAM_SHADOW,
-	DEFAULT_WEBCAM_SIZE,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
 	DEFAULT_CURSOR_SMOOTHING,
 	DEFAULT_CURSOR_SWAY,
+	DEFAULT_WEBCAM_CORNER_RADIUS,
+	DEFAULT_WEBCAM_REACT_TO_ZOOM,
+	DEFAULT_WEBCAM_SHADOW,
+	DEFAULT_WEBCAM_SIZE,
 	DEFAULT_ZOOM_MOTION_BLUR,
 	SPEED_OPTIONS,
 } from "./types";
@@ -424,8 +424,8 @@ export function SettingsPanel({
 		};
 
 		reader.onerror = () => {
-			toast.error(t("common.failedToUploadImage"), {
-				description: t("common.errorReadingFile"),
+			toast.error(t("common.errors.failedToUploadImage"), {
+				description: t("common.errors.fileReadError"),
 			});
 		};
 
@@ -694,7 +694,7 @@ export function SettingsPanel({
 										max={2}
 										step={0.01}
 										onChange={(v) => onCursorSmoothingChange?.(v)}
-										formatValue={(v) => (v <= 0 ? "Off" : v.toFixed(2))}
+										formatValue={(v) => (v <= 0 ? tSettings("effects.off") : v.toFixed(2))}
 										parseInput={(t) => parseFloat(t)}
 									/>
 								</div>
@@ -739,7 +739,7 @@ export function SettingsPanel({
 										max={toCursorSwaySliderValue(2)}
 										step={toCursorSwaySliderValue(0.05)}
 										onChange={(v) => onCursorSwayChange?.(fromCursorSwaySliderValue(v))}
-										formatValue={(v) => (v <= 0 ? "Off" : `${v.toFixed(2)}×`)}
+										formatValue={(v) => (v <= 0 ? tSettings("effects.off") : `${v.toFixed(2)}×`)}
 										parseInput={(t) => {
 											const normalized = t.trim().toLowerCase();
 											if (normalized === "off") {
@@ -885,7 +885,9 @@ export function SettingsPanel({
 									/>
 								</div>
 								<div className="col-span-2 flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300">{tSettings("effects.removeBackground")}</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{tSettings("effects.removeBackground")}
+									</div>
 									<Switch
 										checked={removeBackgroundEnabled}
 										onCheckedChange={handleRemoveBackgroundToggle}
@@ -1229,7 +1231,11 @@ export function SettingsPanel({
 												: "text-slate-400 hover:text-slate-200",
 										)}
 									>
-										{key === "original" ? "Orig" : key.charAt(0).toUpperCase() + key.slice(1, 3)}
+										{key === "medium"
+											? tSettings("export.sizePreset.medium")
+											: key === "large"
+												? tSettings("export.sizePreset.large")
+												: tSettings("export.sizePreset.original")}
 									</button>
 								))}
 							</div>
@@ -1279,7 +1285,7 @@ export function SettingsPanel({
 				>
 					<Download className="w-4 h-4" />
 					{tSettings("export.exportVideo", undefined, {
-						format: exportFormat === "gif" ? "GIF" : "Video",
+						format: exportFormat === "gif" ? tSettings("export.gif") : tSettings("export.mp4"),
 					})}
 				</Button>
 

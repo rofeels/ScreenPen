@@ -19,7 +19,16 @@
 		"frames": "Frames",
 		"cancelExport": "Cancel Export",
 		"reopenSaveDialog": "Open Save Dialog Again",
-		"savedSuccess": "{{format}} saved successfully!"
+		"savedSuccess": "{{format}} saved successfully!",
+		"revealInFolderFailed": "Failed to reveal item in folder.",
+		"revealInFolderError": "Error revealing in folder: {{error}}",
+		"saveDialogCanceledRetry": "Save dialog canceled. Click Save Again to save without re-rendering.",
+		"saveCanceledRetry": "Save canceled. You can save again without re-exporting.",
+		"saveCanceledTryAgain": "Save canceled. You can try again.",
+		"failedToSaveGif": "Failed to save GIF",
+		"failedToSaveVideo": "Failed to save video",
+		"exportFailedGeneric": "Export failed",
+		"canceled": "Export canceled"
 	},
 	"addFont": {
 		"title": "Add Google Font",
@@ -40,7 +49,8 @@
 		"addSuccess": "Font \"{{name}}\" added successfully",
 		"addFailed": "Failed to add font",
 		"loadTimeout": "Font took too long to load. Please check the URL and try again.",
-		"loadFailed": "The font could not be loaded. Please verify the Google Fonts URL is correct."
+		"loadFailed": "The font could not be loaded. Please verify the Google Fonts URL is correct.",
+		"cancel": "Cancel"
 	},
 	"shortcutsConfig": {
 		"title": "Keyboard Shortcuts",

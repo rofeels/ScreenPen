@@ -20,19 +20,58 @@
 		"cannotPlace": "无法在此处放置修剪",
 		"existsOrNoSpace": "此位置已存在修剪或空间不足。",
 		"label": "修剪 {{index}}",
-		"addTrim": "添加修剪 (T)"
+		"addTrim": "添加修剪 (T)",
+		"shortLabel": "修剪"
 	},
 	"speed": {
 		"cannotPlace": "无法在此处放置变速",
 		"existsOrNoSpace": "此位置已存在变速区域或空间不足。",
-		"label": "变速"
+		"label": "变速",
+		"regionLabel": "变速 {{index}}"
 	},
 	"annotation": {
 		"label": "注释",
 		"image": "图片",
-		"addAnnotation": "添加注释 (A)"
+		"addAnnotation": "添加注释 (A)",
+		"emptyText": "空文本"
 	},
 	"addSpeed": "添加变速 (S)",
 	"resizeLeft": "向左调整",
-	"resizeRight": "向右调整"
+	"resizeRight": "向右调整",
+	"audio": {
+		"addAudio": "添加音频",
+		"label": "音频",
+		"couldNotReadFile": "无法读取音频文件",
+		"unsupportedFile": "所选文件可能已损坏或格式不受支持。",
+		"cannotPlace": "无法在此处放置音频",
+		"existsOrNoSpace": "此位置已存在音频区域或可用空间不足。"
+	},
+	"empty": {
+		"title": "未加载视频",
+		"description": "拖放视频以开始编辑"
+	},
+	"controls": {
+		"sideScroll": "横向滚动",
+		"pan": "平移",
+		"zoom": "缩放",
+		"custom": "自定义",
+		"customWidth": "自定义宽高比宽度",
+		"customHeight": "自定义宽高比高度",
+		"set": "设置",
+		"customAspectPositive": "自定义宽高比必须是正数。"
+	},
+	"customAspect": {
+		"label": "自定义",
+		"width": "自定义宽高比宽度",
+		"height": "自定义宽高比高度",
+		"apply": "设置",
+		"invalidPositive": "自定义宽高比必须是正数。"
+	},
+	"hints": {
+		"addZoom": "按 Z 添加缩放",
+		"addTrim": "按 T 添加剪辑",
+		"addAnnotation": "按 A 添加注释",
+		"addSpeed": "按 S 添加速度",
+		"addAudio": "点击音乐图标添加音频"
+	}
 }

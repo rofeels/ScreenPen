@@ -2,17 +2,30 @@
 	"app": {
 		"name": "Recordly",
 		"editorTitle": "Editor de Recordly",
-		"subtitle": "Grabación de pantalla y edición"
+		"subtitle": "Grabación de pantalla y edición",
+		"language": "Idioma",
+		"loadingVideo": "Cargando video...",
+		"manageRecordings": "Gestionar grabaciones"
 	},
 	"actions": {
 		"cancel": "Cancelar",
 		"save": "Guardar",
 		"delete": "Eliminar",
-		"done": "Hecho"
+		"done": "Hecho",
+		"open": "Abrir",
+		"close": "Cerrar",
+		"share": "Compartir",
+		"set": "Aplicar",
+		"reset": "Restablecer",
+		"loadProject": "Cargar proyecto"
+	},
+	"accessibility": {
+		"close": "Cerrar"
 	},
 	"errors": {
 		"invalidFileType": "Tipo de archivo inválido",
 		"failedToUploadImage": "Error al subir la imagen",
-		"fileReadError": "Hubo un error al leer el archivo."
+		"fileReadError": "Hubo un error al leer el archivo.",
+		"unknown": "Error desconocido"
 	}
 }

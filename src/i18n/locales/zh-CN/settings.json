@@ -53,7 +53,8 @@
 		"gradient": "渐变",
 		"uploadCustom": "上传自定义",
 		"uploadSuccess": "自定义图片上传成功！",
-		"uploadError": "请上传 JPG 或 JPEG 图片文件。"
+		"uploadError": "请上传 JPG 或 JPEG 图片文件。",
+		"uploadErrorDescription": "请上传 JPG 或 JPEG 图片文件。"
 	},
 	"export": {
 		"mp4": "MP4",
@@ -70,6 +71,11 @@
 		"saveProject": "保存项目",
 		"exportVideo": "导出{{format}}",
 		"reportBug": "报告问题",
-		"starOnGithub": "在 GitHub 上加星"
+		"starOnGithub": "在 GitHub 上加星",
+		"sizePreset": {
+			"medium": "720p",
+			"large": "1080p",
+			"original": "原始"
+		}
 	}
 }

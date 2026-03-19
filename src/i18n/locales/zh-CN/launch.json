@@ -45,8 +45,11 @@
 		"windows": "窗口",
 		"windowsNote": "仅可录制可见（非最小化）窗口。",
 		"windowPlaceholder": "窗口",
+		"noScreensAvailable": "没有可用的屏幕",
+		"noWindowsAvailable": "没有可用的窗口",
 		"cancel": "取消",
-		"share": "共享"
+		"share": "共享",
+		"appIconAlt": "应用图标"
 	},
 	"permissions": {
 		"screenRecordingNeeded": "Recordly 需要屏幕录制权限才能开始。系统设置已打开。启用后请退出并重新打开 Recordly。",

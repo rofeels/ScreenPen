@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useI18n } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { AppLocale } from "@/i18n/config";
-import { SUPPORTED_LOCALES } from "@/i18n/config";
+import { LOCALE_OPTIONS, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getAssetPath } from "@/lib/assetPath";
 import {
 	calculateOutputDimensions,
@@ -37,9 +37,7 @@ import {
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
-import {
-	normalizeCursorTelemetry,
-} from "./timeline/zoomSuggestionUtils";
+import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
 	type AnnotationRegion,
 	type AudioRegion,
@@ -93,11 +91,6 @@ function LanguageSwitcher() {
 	const { locale, setLocale, t } = useI18n();
 	const idx = SUPPORTED_LOCALES.indexOf(locale as (typeof SUPPORTED_LOCALES)[number]);
 	const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length] as AppLocale;
-	const labels: Record<string, string> = {
-		en: "EN",
-		es: "ES",
-		"zh-CN": "中文",
-	};
 	return (
 		<button
 			type="button"
@@ -107,7 +100,7 @@ function LanguageSwitcher() {
 			aria-label={t("common.app.language", "Language")}
 		>
 			<Languages className="h-4 w-4" />
-			<span className="text-xs font-normal">{labels[locale] ?? locale.toUpperCase()}</span>
+			<span className="text-xs font-normal">{LOCALE_OPTIONS[locale].shortLabel}</span>
 		</button>
 	);
 }
@@ -572,17 +565,17 @@ export default function VideoEditor() {
 						sourcePath: null,
 					}));
 				} else {
-					setError("No video to load. Please record or select a video.");
+					setError(t("editor.messages.noVideoToLoad"));
 				}
 			} catch (err) {
-				setError("Error loading video: " + String(err));
+				setError(t("editor.messages.errorLoadingVideo", undefined, { error: String(err) }));
 			} finally {
 				setLoading(false);
 			}
 		}
 
 		loadInitialData();
-	}, [applyLoadedProject]);
+	}, [applyLoadedProject, t]);
 
 	useEffect(() => {
 		saveEditorPreferences({
@@ -637,13 +630,13 @@ export default function VideoEditor() {
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean) => {
 			if (!videoPath) {
-				toast.error("No video loaded");
+				toast.error(t("editor.messages.noVideoLoaded"));
 				return;
 			}
 
 			const sourcePath = videoSourcePath ?? fromFileUrl(videoPath);
 			if (!sourcePath) {
-				toast.error("Unable to determine source video path");
+				toast.error(t("editor.messages.unableToDetermineSourceVideoPath"));
 				return;
 			}
 
@@ -690,12 +683,12 @@ export default function VideoEditor() {
 			);
 
 			if (result.canceled) {
-				toast.info("Project save canceled");
+				toast.info(t("editor.project.saveCanceled"));
 				return;
 			}
 
 			if (!result.success) {
-				toast.error(result.message || "Failed to save project");
+				toast.error(result.message || t("editor.project.saveFailed"));
 				return;
 			}
 
@@ -704,7 +697,7 @@ export default function VideoEditor() {
 			}
 			setLastSavedSnapshot(projectSnapshot);
 
-			toast.success(`Project saved to ${result.path}`);
+			toast.success(t("editor.project.savedTo", undefined, { path: result.path ?? "" }));
 		},
 		[
 			videoPath,
@@ -737,6 +730,7 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			t,
 		],
 	);
 
@@ -782,18 +776,18 @@ export default function VideoEditor() {
 		}
 
 		if (!result.success) {
-			toast.error(result.message || "Failed to load project");
+			toast.error(result.message || t("editor.project.loadFailed"));
 			return;
 		}
 
 		const restored = await applyLoadedProject(result.project, result.path ?? null);
 		if (!restored) {
-			toast.error("Invalid project file format");
+			toast.error(t("editor.project.invalidFormat"));
 			return;
 		}
 
-		toast.success(`Project loaded from ${result.path}`);
-	}, [applyLoadedProject]);
+		toast.success(t("editor.project.loadedFrom", undefined, { path: result.path ?? "" }));
+	}, [applyLoadedProject, t]);
 
 	useEffect(() => {
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
@@ -1203,25 +1197,28 @@ export default function VideoEditor() {
 		[selectedSpeedId],
 	);
 
-	const handleAnnotationAdded = useCallback((span: Span) => {
-		const id = `annotation-${nextAnnotationIdRef.current++}`;
-		const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
-		const newRegion: AnnotationRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			type: "text",
-			content: "Enter text...",
-			position: { ...DEFAULT_ANNOTATION_POSITION },
-			size: { ...DEFAULT_ANNOTATION_SIZE },
-			style: { ...DEFAULT_ANNOTATION_STYLE },
-			zIndex,
-		};
-		setAnnotationRegions((prev) => [...prev, newRegion]);
-		setSelectedAnnotationId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-	}, []);
+	const handleAnnotationAdded = useCallback(
+		(span: Span) => {
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				type: "text",
+				content: t("editor.annotations.defaultText"),
+				position: { ...DEFAULT_ANNOTATION_POSITION },
+				size: { ...DEFAULT_ANNOTATION_SIZE },
+				style: { ...DEFAULT_ANNOTATION_STYLE },
+				zIndex,
+			};
+			setAnnotationRegions((prev) => [...prev, newRegion]);
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+		},
+		[t],
+	);
 
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
 		setAnnotationRegions((prev) =>
@@ -1265,30 +1262,33 @@ export default function VideoEditor() {
 		});
 	}, []);
 
-	const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion["type"]) => {
-		setAnnotationRegions((prev) => {
-			const updated = prev.map((region) => {
-				if (region.id !== id) return region;
+	const handleAnnotationTypeChange = useCallback(
+		(id: string, type: AnnotationRegion["type"]) => {
+			setAnnotationRegions((prev) => {
+				const updated = prev.map((region) => {
+					if (region.id !== id) return region;
 
-				const updatedRegion = { ...region, type };
+					const updatedRegion = { ...region, type };
 
-				// Restore content from type-specific storage
-				if (type === "text") {
-					updatedRegion.content = region.textContent || "Enter text...";
-				} else if (type === "image") {
-					updatedRegion.content = region.imageContent || "";
-				} else if (type === "figure") {
-					updatedRegion.content = "";
-					if (!region.figureData) {
-						updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+					// Restore content from type-specific storage
+					if (type === "text") {
+						updatedRegion.content = region.textContent || t("editor.annotations.defaultText");
+					} else if (type === "image") {
+						updatedRegion.content = region.imageContent || "";
+					} else if (type === "figure") {
+						updatedRegion.content = "";
+						if (!region.figureData) {
+							updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+						}
 					}
-				}
 
-				return updatedRegion;
+					return updatedRegion;
+				});
+				return updated;
 			});
-			return updated;
-		});
-	}, []);
+		},
+		[t],
+	);
 
 	const handleAnnotationStyleChange = useCallback(
 		(id: string, style: Partial<AnnotationRegion["style"]>) => {
@@ -1486,36 +1486,41 @@ export default function VideoEditor() {
 		}
 	}, [isPlaying, currentTime, audioRegions]);
 
-	const showExportSuccessToast = useCallback((filePath: string) => {
-		toast.success(`Exported successfully to ${filePath}`, {
-			action: {
-				label: "Show in Folder",
-				onClick: async () => {
-					try {
-						const result = await window.electronAPI.revealInFolder(filePath);
-						if (!result.success) {
-							const errorMessage =
-								result.error || result.message || "Failed to reveal item in folder.";
-							toast.error(errorMessage);
+	const showExportSuccessToast = useCallback(
+		(filePath: string) => {
+			toast.success(t("editor.export.exportedTo", undefined, { path: filePath }), {
+				action: {
+					label: t("dialogs.export.showInFolder"),
+					onClick: async () => {
+						try {
+							const result = await window.electronAPI.revealInFolder(filePath);
+							if (!result.success) {
+								const errorMessage =
+									result.error || result.message || t("dialogs.export.revealInFolderFailed");
+								toast.error(errorMessage);
+							}
+						} catch (err) {
+							toast.error(
+								t("dialogs.export.revealInFolderError", undefined, { error: String(err) }),
+							);
 						}
-					} catch (err) {
-						toast.error(`Error revealing in folder: ${String(err)}`);
-					}
+					},
 				},
-			},
-		});
-	}, []);
+			});
+		},
+		[t],
+	);
 
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
 			if (!videoPath) {
-				toast.error("No video loaded");
+				toast.error(t("editor.messages.noVideoLoaded"));
 				return;
 			}
 
 			const video = videoPlaybackRef.current?.video;
 			if (!video) {
-				toast.error("Video not ready");
+				toast.error(t("editor.messages.videoNotReady"));
 				return;
 			}
 
@@ -1597,21 +1602,19 @@ export default function VideoEditor() {
 						if (saveResult.canceled) {
 							pendingExportSaveRef.current = { arrayBuffer, fileName };
 							setHasPendingExportSave(true);
-							setExportError(
-								"Save dialog canceled. Click Save Again to save without re-rendering.",
-							);
-							toast.info("Save canceled. You can save again without re-exporting.");
+							setExportError(t("editor.export.saveDialogCanceledRetry"));
+							toast.info(t("editor.export.saveCanceledRetry"));
 							keepExportDialogOpen = true;
 						} else if (saveResult.success && saveResult.path) {
 							showExportSuccessToast(saveResult.path);
 							setExportedFilePath(saveResult.path);
 						} else {
-							setExportError(saveResult.message || "Failed to save GIF");
-							toast.error(saveResult.message || "Failed to save GIF");
+							setExportError(saveResult.message || t("editor.export.failedToSaveGif"));
+							toast.error(saveResult.message || t("editor.export.failedToSaveGif"));
 						}
 					} else {
-						setExportError(result.error || "GIF export failed");
-						toast.error(result.error || "GIF export failed");
+						setExportError(result.error || t("editor.export.failedGeneric"));
+						toast.error(result.error || t("editor.export.failedGeneric"));
 					}
 				} else {
 					// MP4 Export
@@ -1744,21 +1747,19 @@ export default function VideoEditor() {
 						if (saveResult.canceled) {
 							pendingExportSaveRef.current = { arrayBuffer, fileName };
 							setHasPendingExportSave(true);
-							setExportError(
-								"Save dialog canceled. Click Save Again to save without re-rendering.",
-							);
-							toast.info("Save canceled. You can save again without re-exporting.");
+							setExportError(t("editor.export.saveDialogCanceledRetry"));
+							toast.info(t("editor.export.saveCanceledRetry"));
 							keepExportDialogOpen = true;
 						} else if (saveResult.success && saveResult.path) {
 							showExportSuccessToast(saveResult.path);
 							setExportedFilePath(saveResult.path);
 						} else {
-							setExportError(saveResult.message || "Failed to save video");
-							toast.error(saveResult.message || "Failed to save video");
+							setExportError(saveResult.message || t("editor.export.failedToSaveVideo"));
+							toast.error(saveResult.message || t("editor.export.failedToSaveVideo"));
 						}
 					} else {
-						setExportError(result.error || "Export failed");
-						toast.error(result.error || "Export failed");
+						setExportError(result.error || t("editor.export.failedGeneric"));
+						toast.error(result.error || t("editor.export.failedGeneric"));
 					}
 				}
 
@@ -1770,9 +1771,9 @@ export default function VideoEditor() {
 				}
 			} catch (error) {
 				console.error("Export error:", error);
-				const errorMessage = error instanceof Error ? error.message : "Unknown error";
+				const errorMessage = error instanceof Error ? error.message : t("common.errors.unknown");
 				setExportError(errorMessage);
-				toast.error(`Export failed: ${errorMessage}`);
+				toast.error(t("editor.export.failedWithReason", undefined, { error: errorMessage }));
 			} finally {
 				if (!isPlaying) {
 					await videoPlaybackRef.current?.refreshFrame().catch(() => undefined);
@@ -1810,24 +1811,25 @@ export default function VideoEditor() {
 			exportQuality,
 			effectiveZoomRegions,
 			showExportSuccessToast,
+			t,
 		],
 	);
 
 	const handleOpenExportDialog = useCallback(() => {
 		if (!videoPath) {
-			toast.error("No video loaded");
+			toast.error(t("editor.messages.noVideoLoaded"));
 			return;
 		}
 
 		if (hasPendingExportSave) {
 			setShowExportDialog(true);
-			setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
+			setExportError(t("editor.export.saveDialogCanceledRetry"));
 			return;
 		}
 
 		const video = videoPlaybackRef.current?.video;
 		if (!video) {
-			toast.error("Video not ready");
+			toast.error(t("editor.messages.videoNotReady"));
 			return;
 		}
 
@@ -1870,19 +1872,20 @@ export default function VideoEditor() {
 		gifLoop,
 		gifSizePreset,
 		handleExport,
+		t,
 	]);
 
 	const handleCancelExport = useCallback(() => {
 		if (exporterRef.current) {
 			exporterRef.current.cancel();
-			toast.info("Export canceled");
+			toast.info(t("dialogs.export.canceled"));
 			setShowExportDialog(false);
 			setIsExporting(false);
 			setExportProgress(null);
 			setExportError(null);
 			setExportedFilePath(undefined);
 		}
-	}, []);
+	}, [t]);
 
 	const handleExportDialogClose = useCallback(() => {
 		setShowExportDialog(false);
@@ -1901,8 +1904,8 @@ export default function VideoEditor() {
 		);
 
 		if (saveResult.canceled) {
-			setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
-			toast.info("Save canceled. You can try again.");
+			setExportError(t("editor.export.saveDialogCanceledRetry"));
+			toast.info(t("editor.export.saveCanceledTryAgain"));
 			return;
 		}
 
@@ -1916,26 +1919,28 @@ export default function VideoEditor() {
 			return;
 		}
 
-		const errorMessage = saveResult.message || "Failed to save video";
+		const errorMessage = saveResult.message || t("editor.export.failedToSaveVideo");
 		setExportError(errorMessage);
 		toast.error(errorMessage);
-	}, [showExportSuccessToast]);
+	}, [showExportSuccessToast, t]);
 
 	const openRecordingsFolder = useCallback(async () => {
 		try {
 			const result = await window.electronAPI.openRecordingsFolder();
 			if (!result.success) {
-				toast.error(result.message || result.error || "Failed to open recordings folder.");
+				toast.error(
+					result.message || result.error || t("editor.messages.failedToOpenRecordingsFolder"),
+				);
 			}
 		} catch (error) {
-			toast.error(`Failed to open recordings folder: ${String(error)}`);
+			toast.error(`${t("editor.messages.failedToOpenRecordingsFolder")} ${String(error)}`);
 		}
-	}, []);
+	}, [t]);
 
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
-				<div className="text-foreground">Loading video...</div>
+				<div className="text-foreground">{t("common.app.loadingVideo", "Loading video...")}</div>
 			</div>
 		);
 	}
@@ -1949,7 +1954,7 @@ export default function VideoEditor() {
 						onClick={handleLoadProject}
 						className="px-3 py-1.5 rounded-md bg-[#2563EB] text-white text-sm hover:bg-[#2563EB]/90"
 					>
-						Load Project File
+						{t("editor.project.loadProjectFile")}
 					</button>
 				</div>
 			</div>
@@ -1962,7 +1967,9 @@ export default function VideoEditor() {
 				className="relative h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-center px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
-				<span className="text-sm font-semibold tracking-tight text-white/90">Recordly</span>
+				<span className="text-sm font-semibold tracking-tight text-white/90">
+					{t("common.app.name", "Recordly")}
+				</span>
 				<div
 					className="absolute right-4 flex items-center gap-1"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
@@ -1972,13 +1979,11 @@ export default function VideoEditor() {
 						type="button"
 						onClick={() => void openRecordingsFolder()}
 						className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-white/90 transition hover:bg-white/8 hover:text-white cursor-pointer"
-						title={t("common.app.manageRecordings", "Open recordings folder")}
-						aria-label={t("common.app.manageRecordings", "Open recordings folder")}
+						title={t("editor.openRecordingsFolder")}
+						aria-label={t("editor.openRecordingsFolder")}
 					>
 						<FolderOpen className="h-4 w-4" />
-						<span className="text-xs font-normal">
-							{t("common.app.manageRecordings", "Manage recordings")}
-						</span>
+						<span className="text-xs font-normal">{t("editor.openRecordingsFolder")}</span>
 					</button>
 				</div>
 			</div>

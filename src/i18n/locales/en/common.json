@@ -2,17 +2,30 @@
 	"app": {
 		"name": "Recordly",
 		"editorTitle": "Recordly Editor",
-		"subtitle": "Screen recording and editing"
+		"subtitle": "Screen recording and editing",
+		"language": "Language",
+		"loadingVideo": "Loading video...",
+		"manageRecordings": "Manage recordings"
 	},
 	"actions": {
 		"cancel": "Cancel",
 		"save": "Save",
 		"delete": "Delete",
-		"done": "Done"
+		"done": "Done",
+		"open": "Open",
+		"close": "Close",
+		"share": "Share",
+		"set": "Set",
+		"reset": "Reset",
+		"loadProject": "Load Project"
+	},
+	"accessibility": {
+		"close": "Close"
 	},
 	"errors": {
 		"invalidFileType": "Invalid file type",
 		"failedToUploadImage": "Failed to upload image",
-		"fileReadError": "There was an error reading the file."
+		"fileReadError": "There was an error reading the file.",
+		"unknown": "Unknown error"
 	}
 }

@@ -1,0 +1,81 @@
+{
+	"zoom": {
+		"level": "확대 레벨",
+		"selectRegion": "조정할 확대 구간을 선택하세요",
+		"deleteZoom": "확대 삭제"
+	},
+	"trim": {
+		"deleteRegion": "트림 구간 삭제"
+	},
+	"speed": {
+		"playbackSpeed": "재생 속도",
+		"selectRegion": "조정할 속도 구간을 선택하세요",
+		"deleteRegion": "속도 구간 삭제"
+	},
+	"effects": {
+		"title": "비디오 효과",
+		"showCursor": "커서 표시",
+		"loopCursor": "커서 반복",
+		"backgroundBlur": "배경 블러",
+		"zoomMotionBlur": "확대 모션 블러",
+		"connectZooms": "확대 구간 연결",
+		"cursorSize": "커서 크기",
+		"cursorSmoothing": "커서 보정",
+		"off": "끔",
+		"cursorMotionBlur": "커서 모션 블러",
+		"cursorClickBounce": "커서 클릭 바운스",
+		"cursorSway": "커서 흔들림",
+		"webcam": "웹캠 오버레이",
+		"webcamFootage": "웹캠 영상",
+		"webcamFootageDescription": "이 비디오에 연결된 웹캠 영상이 없습니다",
+		"uploadWebcamFootage": "영상 업로드",
+		"replaceWebcamFootage": "영상 교체",
+		"removeWebcamFootage": "영상 제거",
+		"webcamFootageAdded": "웹캠 영상을 연결했습니다",
+		"webcamFootageRemoved": "웹캠 영상을 제거했습니다",
+		"webcamSize": "웹캠 크기",
+		"webcamReactToZoom": "확대 시 웹캠 반응",
+		"webcamRoundness": "웹캠 둥글기",
+		"webcamShadow": "웹캠 그림자",
+		"shadow": "그림자",
+		"roundness": "둥글기",
+		"padding": "여백",
+		"removeBackground": "배경 제거"
+	},
+	"crop": {
+		"title": "비디오 자르기",
+		"instruction": "각 가장자리를 드래그해 자르기 영역을 조정하세요"
+	},
+	"background": {
+		"title": "배경",
+		"image": "이미지",
+		"color": "색상",
+		"gradient": "그라데이션",
+		"uploadCustom": "사용자 이미지 업로드",
+		"uploadSuccess": "사용자 이미지를 업로드했습니다!",
+		"uploadError": "JPG 또는 JPEG 이미지 파일을 업로드해 주세요.",
+		"uploadErrorDescription": "JPG 또는 JPEG 이미지 파일을 업로드해 주세요."
+	},
+	"export": {
+		"mp4": "MP4",
+		"gif": "GIF",
+		"quality": {
+			"low": "낮음",
+			"medium": "보통",
+			"high": "높음",
+			"original": "원본"
+		},
+		"loop": "반복",
+		"outputDimensions": "출력: {{dimensions}}px",
+		"loadProject": "프로젝트 불러오기",
+		"saveProject": "프로젝트 저장",
+		"exportVideo": "{{format}} 내보내기",
+		"reportBug": "버그 신고",
+		"starOnGithub": "GitHub에서 별표 주기",
+		"sizePreset": {
+			"medium": "720p",
+			"large": "1080p",
+			"original": "원본"
+		}
+	}
+}

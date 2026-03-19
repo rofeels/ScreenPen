@@ -35,7 +35,14 @@
 		"tipCycleForward": "使用 Tab 循环切换重叠项目。",
 		"tipCycleBackward": "使用 Shift+Tab 反向循环切换。",
 		"imageUploadSuccess": "图片上传成功！",
-		"imageUploadError": "请上传 JPG、PNG、GIF 或 WebP 图片文件。"
+		"imageUploadError": "请上传 JPG、PNG、GIF 或 WebP 图片文件。",
+		"imageUploadErrorDescription": "请上传 JPG、PNG、GIF 或 WebP 图片文件。",
+		"imageUploadFailed": "图片上传失败",
+		"imageUploadFailedDescription": "读取所选图片时出错。",
+		"overlayAlt": "注释",
+		"noImage": "没有图片",
+		"noArrowData": "没有箭头数据",
+		"defaultText": "输入文字..."
 	},
 	"fontStyles": {
 		"classic": "经典",
@@ -87,5 +94,32 @@
 		"cycleAnnotations": "循环切换注释",
 		"tab": "Tab"
 	},
-	"openRecordingsFolder": "打开录制文件夹"
+	"openRecordingsFolder": "打开录制文件夹",
+	"messages": {
+		"noVideoToLoad": "没有可加载的视频。请先录制或选择一个视频。",
+		"errorLoadingVideo": "加载视频时出错：{{error}}",
+		"noVideoLoaded": "未加载视频",
+		"videoNotReady": "视频尚未准备好",
+		"unableToDetermineSourceVideoPath": "无法确定源视频路径",
+		"failedToOpenRecordingsFolder": "无法打开录制文件夹。"
+	},
+	"project": {
+		"saveCanceled": "项目保存已取消",
+		"saveFailed": "保存项目失败",
+		"savedTo": "项目已保存到 {{path}}",
+		"loadFailed": "加载项目失败",
+		"invalidFormat": "项目文件格式无效",
+		"loadedFrom": "项目已从 {{path}} 加载",
+		"loadProjectFile": "加载项目文件"
+	},
+	"export": {
+		"exportedTo": "已成功导出到 {{path}}",
+		"saveDialogCanceledRetry": "保存对话框已取消。点击“再次保存”即可无需重新渲染直接保存。",
+		"saveCanceledRetry": "已取消保存。您可以无需重新导出再次保存。",
+		"saveCanceledTryAgain": "已取消保存。您可以再试一次。",
+		"failedToSaveGif": "保存 GIF 失败",
+		"failedToSaveVideo": "保存视频失败",
+		"failedGeneric": "导出失败",
+		"failedWithReason": "导出失败：{{error}}"
+	}
 }

@@ -12,5 +12,9 @@
 		"deleteSelectedAlt": "Delete Selected (alt)",
 		"panTimeline": "Pan Timeline",
 		"zoomTimeline": "Zoom Timeline"
+	},
+	"bindings": {
+		"panTimeline": "Shift + Ctrl + Scroll",
+		"zoomTimeline": "Ctrl + Scroll"
 	}
 }

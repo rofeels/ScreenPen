@@ -12,5 +12,9 @@
 		"deleteSelectedAlt": "Eliminar seleccionado (alt)",
 		"panTimeline": "Desplazar línea de tiempo",
 		"zoomTimeline": "Zoom en línea de tiempo"
+	},
+	"bindings": {
+		"panTimeline": "Mayús + Ctrl + rueda",
+		"zoomTimeline": "Ctrl + rueda"
 	}
 }

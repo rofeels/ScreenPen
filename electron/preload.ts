@@ -1,4 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type {
+	CursorTelemetryPoint,
+	NativeMacRecordingOptions,
+	ProcessedDesktopSource,
+	RecordingSessionData,
+	SelectedSource,
+} from "./ipc/contracts";
 
 contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlayHide: () => {
@@ -23,7 +30,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("read-local-file", filePath);
 	},
 	getSources: async (opts: Electron.SourcesOptions) => {
-		return await ipcRenderer.invoke("get-sources", opts);
+		return (await ipcRenderer.invoke("get-sources", opts)) as ProcessedDesktopSource[];
 	},
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
@@ -31,24 +38,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openSourceSelector: () => {
 		return ipcRenderer.invoke("open-source-selector");
 	},
-	selectSource: (source: any) => {
+	selectSource: (source: SelectedSource) => {
 		return ipcRenderer.invoke("select-source", source);
 	},
-	showSourceHighlight: (source: any) => {
+	showSourceHighlight: (source: SelectedSource) => {
 		return ipcRenderer.invoke("show-source-highlight", source);
 	},
 	getSelectedSource: () => {
-		return ipcRenderer.invoke("get-selected-source");
+		return ipcRenderer.invoke("get-selected-source") as Promise<SelectedSource | null>;
 	},
-	startNativeScreenRecording: (
-		source: any,
-		options?: {
-			capturesSystemAudio?: boolean;
-			capturesMicrophone?: boolean;
-			microphoneDeviceId?: string;
-			microphoneLabel?: string;
-		},
-	) => {
+	startNativeScreenRecording: (source: SelectedSource, options?: NativeMacRecordingOptions) => {
 		return ipcRenderer.invoke("start-native-screen-recording", source, options);
 	},
 	stopNativeScreenRecording: () => {
@@ -60,7 +59,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	resumeNativeScreenRecording: () => {
 		return ipcRenderer.invoke("resume-native-screen-recording");
 	},
-	startFfmpegRecording: (source: any) => {
+	startFfmpegRecording: (source: SelectedSource) => {
 		return ipcRenderer.invoke("start-ffmpeg-recording", source);
 	},
 	stopFfmpegRecording: () => {
@@ -147,7 +146,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setCurrentVideoPath: (path: string) => {
 		return ipcRenderer.invoke("set-current-video-path", path);
 	},
-	setCurrentRecordingSession: (session: { videoPath: string; webcamPath?: string | null }) => {
+	setCurrentRecordingSession: (session: RecordingSessionData) => {
 		return ipcRenderer.invoke("set-current-recording-session", session);
 	},
 	getCurrentRecordingSession: () => {

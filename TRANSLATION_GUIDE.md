@@ -8,6 +8,8 @@ All locale files live under:
 
 - `src/i18n/locales/en/`
 - `src/i18n/locales/es/`
+- `src/i18n/locales/ko/`
+- `src/i18n/locales/zh-CN/`
 
 Each locale has the same namespace files:
 
@@ -20,6 +22,10 @@ Each locale has the same namespace files:
 - `shortcuts.json`
 
 English (`en`) is the source of truth for key structure.
+
+Supported locales and shared language labels are also registered in `src/i18n/config.ts`
+via `SUPPORTED_LOCALES` and `LOCALE_OPTIONS`. Add the new locale code there so the
+language switchers and provider can discover it.
 
 ## Key Rules
 
@@ -62,3 +68,7 @@ This checks for:
 
 Current framework is app-wide and ready for full localization rollout.
 Not every UI string is migrated yet. Migration should be done incrementally by namespace to keep PRs reviewable and low-risk.
+
+Main-process menu/tray/dialog strings under `electron/` are still a separate follow-up lane.
+Renderer strings should continue using the JSON namespaces above so that future Electron-side
+localization can reuse the same terminology.

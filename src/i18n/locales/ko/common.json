@@ -1,0 +1,31 @@
+{
+	"app": {
+		"name": "Recordly",
+		"editorTitle": "Recordly 편집기",
+		"subtitle": "화면 녹화 및 편집",
+		"language": "언어",
+		"loadingVideo": "비디오를 불러오는 중...",
+		"manageRecordings": "녹화 파일 관리"
+	},
+	"actions": {
+		"cancel": "취소",
+		"save": "저장",
+		"delete": "삭제",
+		"done": "완료",
+		"open": "열기",
+		"close": "닫기",
+		"share": "공유",
+		"set": "설정",
+		"reset": "초기화",
+		"loadProject": "프로젝트 불러오기"
+	},
+	"accessibility": {
+		"close": "닫기"
+	},
+	"errors": {
+		"invalidFileType": "잘못된 파일 형식입니다",
+		"failedToUploadImage": "이미지 업로드에 실패했습니다",
+		"fileReadError": "파일을 읽는 중 오류가 발생했습니다.",
+		"unknown": "알 수 없는 오류"
+	}
+}

@@ -53,7 +53,8 @@
 		"gradient": "Gradient",
 		"uploadCustom": "Upload Custom",
 		"uploadSuccess": "Custom image uploaded successfully!",
-		"uploadError": "Please upload a JPG or JPEG image file."
+		"uploadError": "Please upload a JPG or JPEG image file.",
+		"uploadErrorDescription": "Please upload a JPG or JPEG image file."
 	},
 	"export": {
 		"mp4": "MP4",
@@ -70,6 +71,11 @@
 		"saveProject": "Save Project",
 		"exportVideo": "Export {{format}}",
 		"reportBug": "Report Bug",
-		"starOnGithub": "Star on GitHub"
+		"starOnGithub": "Star on GitHub",
+		"sizePreset": {
+			"medium": "720p",
+			"large": "1080p",
+			"original": "Original"
+		}
 	}
 }

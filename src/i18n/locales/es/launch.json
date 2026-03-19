@@ -45,8 +45,11 @@
 		"windows": "Ventanas",
 		"windowsNote": "Solo se pueden grabar las ventanas visibles (no minimizadas).",
 		"windowPlaceholder": "Ventana",
+		"noScreensAvailable": "No hay pantallas disponibles",
+		"noWindowsAvailable": "No hay ventanas disponibles",
 		"cancel": "Cancelar",
-		"share": "Compartir"
+		"share": "Compartir",
+		"appIconAlt": "Icono de la aplicación"
 	},
 	"permissions": {
 		"screenRecordingNeeded": "Recordly necesita permiso de grabación de pantalla antes de comenzar. Se ha abierto Configuración del sistema. Después de habilitarlo, cierra y vuelve a abrir Recordly.",

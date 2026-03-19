@@ -20,19 +20,58 @@
 		"cannotPlace": "No se puede colocar recorte aquí",
 		"existsOrNoSpace": "Ya existe un recorte en esta ubicación o no hay suficiente espacio.",
 		"label": "Recorte {{index}}",
-		"addTrim": "Agregar Recorte (T)"
+		"addTrim": "Agregar Recorte (T)",
+		"shortLabel": "Recorte"
 	},
 	"speed": {
 		"cannotPlace": "No se puede colocar velocidad aquí",
 		"existsOrNoSpace": "Ya existe una región de velocidad en esta ubicación o no hay suficiente espacio.",
-		"label": "Velocidad"
+		"label": "Velocidad",
+		"regionLabel": "Velocidad {{index}}"
 	},
 	"annotation": {
 		"label": "Anotación",
 		"image": "Imagen",
-		"addAnnotation": "Agregar Anotación (A)"
+		"addAnnotation": "Agregar Anotación (A)",
+		"emptyText": "Texto vacío"
 	},
 	"addSpeed": "Agregar Velocidad (S)",
 	"resizeLeft": "Redimensionar izquierda",
-	"resizeRight": "Redimensionar derecha"
+	"resizeRight": "Redimensionar derecha",
+	"audio": {
+		"addAudio": "Agregar audio",
+		"label": "Audio",
+		"couldNotReadFile": "No se pudo leer el archivo de audio",
+		"unsupportedFile": "El archivo seleccionado puede estar dañado o tener un formato no compatible.",
+		"cannotPlace": "No se puede colocar audio aquí",
+		"existsOrNoSpace": "Ya existe una región de audio en esta ubicación o no hay suficiente espacio disponible."
+	},
+	"empty": {
+		"title": "No hay video cargado",
+		"description": "Arrastra y suelta un video para comenzar a editar"
+	},
+	"controls": {
+		"sideScroll": "Desplazamiento lateral",
+		"pan": "Desplazar",
+		"zoom": "Zoom",
+		"custom": "Personalizado",
+		"customWidth": "Ancho de aspecto personalizado",
+		"customHeight": "Alto de aspecto personalizado",
+		"set": "Establecer",
+		"customAspectPositive": "La relación de aspecto personalizada debe usar números positivos."
+	},
+	"customAspect": {
+		"label": "Personalizado",
+		"width": "Ancho de aspecto personalizado",
+		"height": "Alto de aspecto personalizado",
+		"apply": "Establecer",
+		"invalidPositive": "La relación de aspecto personalizada debe usar números positivos."
+	},
+	"hints": {
+		"addZoom": "Pulsa Z para añadir zoom",
+		"addTrim": "Pulsa T para añadir un recorte",
+		"addAnnotation": "Pulsa A para añadir una anotación",
+		"addSpeed": "Pulsa S para añadir velocidad",
+		"addAudio": "Haz clic en el icono de música para añadir audio"
+	}
 }

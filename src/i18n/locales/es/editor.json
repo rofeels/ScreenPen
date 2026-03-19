@@ -35,7 +35,14 @@
 		"tipCycleForward": "Usa Tab para recorrer los elementos superpuestos.",
 		"tipCycleBackward": "Usa Shift+Tab para recorrer hacia atrás.",
 		"imageUploadSuccess": "¡Imagen subida exitosamente!",
-		"imageUploadError": "Por favor sube un archivo de imagen JPG, PNG, GIF o WebP."
+		"imageUploadError": "Por favor sube un archivo de imagen JPG, PNG, GIF o WebP.",
+		"imageUploadErrorDescription": "Sube un archivo de imagen JPG, PNG, GIF o WebP.",
+		"imageUploadFailed": "Error al subir la imagen",
+		"imageUploadFailedDescription": "Hubo un error al leer la imagen seleccionada.",
+		"overlayAlt": "Anotación",
+		"noImage": "Sin imagen",
+		"noArrowData": "No hay datos de flecha",
+		"defaultText": "Escribe texto..."
 	},
 	"fontStyles": {
 		"classic": "Clásico",
@@ -87,5 +94,32 @@
 		"cycleAnnotations": "Recorrer anotaciones",
 		"tab": "Tab"
 	},
-	"openRecordingsFolder": "Abrir carpeta de grabaciones"
+	"openRecordingsFolder": "Abrir carpeta de grabaciones",
+	"messages": {
+		"noVideoToLoad": "No hay ningún video para cargar. Graba o selecciona un video.",
+		"errorLoadingVideo": "Error al cargar el video: {{error}}",
+		"noVideoLoaded": "No hay video cargado",
+		"videoNotReady": "El video no está listo",
+		"unableToDetermineSourceVideoPath": "No se pudo determinar la ruta del video fuente",
+		"failedToOpenRecordingsFolder": "No se pudo abrir la carpeta de grabaciones."
+	},
+	"project": {
+		"saveCanceled": "Se canceló el guardado del proyecto",
+		"saveFailed": "No se pudo guardar el proyecto",
+		"savedTo": "Proyecto guardado en {{path}}",
+		"loadFailed": "No se pudo cargar el proyecto",
+		"invalidFormat": "Formato de archivo de proyecto no válido",
+		"loadedFrom": "Proyecto cargado desde {{path}}",
+		"loadProjectFile": "Cargar archivo de proyecto"
+	},
+	"export": {
+		"exportedTo": "Se exportó correctamente a {{path}}",
+		"saveDialogCanceledRetry": "Se canceló el diálogo de guardado. Haz clic en Guardar de nuevo para guardar sin volver a renderizar.",
+		"saveCanceledRetry": "Guardado cancelado. Puedes volver a guardar sin volver a exportar.",
+		"saveCanceledTryAgain": "Guardado cancelado. Puedes intentarlo de nuevo.",
+		"failedToSaveGif": "No se pudo guardar el GIF",
+		"failedToSaveVideo": "No se pudo guardar el video",
+		"failedGeneric": "La exportación falló",
+		"failedWithReason": "La exportación falló: {{error}}"
+	}
 }

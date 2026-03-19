@@ -45,8 +45,11 @@
 		"windows": "Windows",
 		"windowsNote": "Only visible (non-minimized) windows can be recorded.",
 		"windowPlaceholder": "Window",
+		"noScreensAvailable": "No screens available",
+		"noWindowsAvailable": "No windows available",
 		"cancel": "Cancel",
-		"share": "Share"
+		"share": "Share",
+		"appIconAlt": "App icon"
 	},
 	"permissions": {
 		"screenRecordingNeeded": "Recordly needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen Recordly.",

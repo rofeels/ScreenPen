@@ -19,7 +19,16 @@
 		"frames": "Cuadros",
 		"cancelExport": "Cancelar exportación",
 		"reopenSaveDialog": "Abrir de nuevo el diálogo de guardado",
-		"savedSuccess": "¡{{format}} guardado exitosamente!"
+		"savedSuccess": "¡{{format}} guardado exitosamente!",
+		"revealInFolderFailed": "No se pudo mostrar el elemento en la carpeta.",
+		"revealInFolderError": "Error al mostrar en la carpeta: {{error}}",
+		"saveDialogCanceledRetry": "Se canceló el diálogo de guardado. Haz clic en Guardar de nuevo para guardar sin volver a renderizar.",
+		"saveCanceledRetry": "Guardado cancelado. Puedes volver a guardar sin volver a exportar.",
+		"saveCanceledTryAgain": "Guardado cancelado. Puedes intentarlo de nuevo.",
+		"failedToSaveGif": "No se pudo guardar el GIF",
+		"failedToSaveVideo": "No se pudo guardar el video",
+		"exportFailedGeneric": "La exportación falló",
+		"canceled": "Exportación cancelada"
 	},
 	"addFont": {
 		"title": "Agregar fuente de Google",
@@ -40,7 +49,8 @@
 		"addSuccess": "Fuente \"{{name}}\" agregada exitosamente",
 		"addFailed": "Error al agregar la fuente",
 		"loadTimeout": "La fuente tardó demasiado en cargar. Por favor verifica la URL e inténtalo de nuevo.",
-		"loadFailed": "No se pudo cargar la fuente. Por favor verifica que la URL de Google Fonts sea correcta."
+		"loadFailed": "No se pudo cargar la fuente. Por favor verifica que la URL de Google Fonts sea correcta.",
+		"cancel": "Cancelar"
 	},
 	"shortcutsConfig": {
 		"title": "Atajos de teclado",
