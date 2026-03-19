@@ -437,19 +437,24 @@ function loadUiohookModule() {
 		Uiohook?: UiohookLike;
 		default?: UiohookLike | { uIOhook?: UiohookLike; uiohook?: UiohookLike };
 	};
-	const defaultExport =
-		typeof moduleExports.default === "object" && moduleExports.default !== null
-			? (moduleExports.default as { uIOhook?: UiohookLike; uiohook?: UiohookLike })
+	const defaultExport = moduleExports.default;
+	const nestedDefaultExport =
+		typeof defaultExport === "object" && defaultExport !== null
+			? (defaultExport as { uIOhook?: UiohookLike; uiohook?: UiohookLike })
+			: null;
+	const directDefaultExport =
+		typeof defaultExport === "object" && defaultExport !== null
+			? (defaultExport as UiohookLike)
 			: null;
 
 	return (
 		moduleExports.uIOhook ??
 		moduleExports.uiohook ??
 		moduleExports.Uiohook ??
-		defaultExport?.uIOhook ??
-		defaultExport?.uiohook ??
-		moduleExports.default ??
-		moduleExports
+		nestedDefaultExport?.uIOhook ??
+		nestedDefaultExport?.uiohook ??
+		directDefaultExport ??
+		null
 	);
 }
 
