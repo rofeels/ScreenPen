@@ -928,106 +928,43 @@ function attachNativeCaptureLifecycle(process: ChildProcessWithoutNullStreams) {
 	});
 }
 
-function handleCursorMonitorStdout(chunk: Buffer) {
-	nativeCursorMonitorOutputBuffer += chunk.toString();
-	const lines = nativeCursorMonitorOutputBuffer.split(/\r?\n/);
-	nativeCursorMonitorOutputBuffer = lines.pop() ?? "";
-
-	for (const line of lines) {
-		const match = line.match(/^STATE:(.+)$/);
-		if (!match) continue;
-		const next = match[1].trim() as CursorVisualType;
-		if (
-			next === "arrow" ||
-			next === "text" ||
-			next === "pointer" ||
-			next === "crosshair" ||
-			next === "open-hand" ||
-			next === "closed-hand" ||
-			next === "resize-ew" ||
-			next === "resize-ns" ||
-			next === "not-allowed"
-		) {
-			if (currentCursorVisualType !== next) {
-				currentCursorVisualType = next;
-				sampleCursorStateChange(next);
-				emitCursorStateChanged(next);
-			}
+async function resolveCursorMonitorHelperPath() {
+	if (process.platform === "win32") {
+		const helperPath = getCursorMonitorExePath();
+		try {
+			await fs.access(helperPath, fsConstants.X_OK);
+			return helperPath;
+		} catch {
+			console.warn("Windows cursor monitor helper missing or not executable:", helperPath);
+			return null;
 		}
 	}
+
+	return ensureNativeCursorMonitorBinary();
 }
 
+const cursorMonitorRuntime = createCursorMonitorRuntime({
+	platform: process.platform,
+	resolveHelperPath: resolveCursorMonitorHelperPath,
+	getCurrentCursorType: () => currentCursorVisualType,
+	setCurrentCursorType: (cursorType) => {
+		currentCursorVisualType = cursorType;
+	},
+	onCursorTypeDetected: (cursorType) => {
+		sampleCursorStateChange(cursorType);
+		emitCursorStateChanged(cursorType);
+	},
+	onWarning: (message, error) => {
+		console.warn(message, error);
+	},
+});
+
 async function startNativeCursorMonitor() {
-	stopNativeCursorMonitor();
-
-	if (process.platform !== "darwin" && process.platform !== "win32") {
-		currentCursorVisualType = "arrow";
-		return;
-	}
-
-	try {
-		let helperPath: string;
-		if (process.platform === "win32") {
-			helperPath = getCursorMonitorExePath();
-			try {
-				await fs.access(helperPath, fsConstants.X_OK);
-			} catch {
-				console.warn("Windows cursor monitor helper missing or not executable:", helperPath);
-				currentCursorVisualType = "arrow";
-				return;
-			}
-		} else {
-			helperPath = await ensureNativeCursorMonitorBinary();
-		}
-
-		nativeCursorMonitorOutputBuffer = "";
-		currentCursorVisualType = "arrow";
-		nativeCursorMonitorProcess = spawn(helperPath, [], {
-			stdio: ["pipe", "pipe", "pipe"],
-		});
-
-		nativeCursorMonitorProcess.once("error", (error) => {
-			console.warn("Native cursor monitor process error:", error);
-			nativeCursorMonitorProcess = null;
-			nativeCursorMonitorOutputBuffer = "";
-			currentCursorVisualType = "arrow";
-		});
-
-		nativeCursorMonitorProcess.stdout.on("data", handleCursorMonitorStdout);
-
-		nativeCursorMonitorProcess.once("close", () => {
-			nativeCursorMonitorProcess = null;
-			nativeCursorMonitorOutputBuffer = "";
-			currentCursorVisualType = "arrow";
-		});
-	} catch (error) {
-		console.warn("Failed to start native cursor monitor:", error);
-		nativeCursorMonitorProcess = null;
-		nativeCursorMonitorOutputBuffer = "";
-		currentCursorVisualType = "arrow";
-	}
+	await cursorMonitorRuntime.start();
 }
 
 function stopNativeCursorMonitor() {
-	currentCursorVisualType = "arrow";
-
-	if (!nativeCursorMonitorProcess) {
-		return;
-	}
-
-	try {
-		nativeCursorMonitorProcess.stdin.write("stop\n");
-	} catch {
-		// ignore stop signal issues
-	}
-	try {
-		nativeCursorMonitorProcess.kill();
-	} catch {
-		// ignore kill issues
-	}
-
-	nativeCursorMonitorProcess = null;
-	nativeCursorMonitorOutputBuffer = "";
+	cursorMonitorRuntime.stop();
 }
 
 async function moveFileWithOverwrite(sourcePath: string, destinationPath: string) {
@@ -1076,7 +1013,14 @@ let hasLoggedInteractionHookFailure = false;
 let lastLeftClick: { timeMs: number; cx: number; cy: number } | null = null;
 let linuxCursorScreenPoint: { x: number; y: number; updatedAt: number } | null = null;
 let selectedWindowBounds: WindowBounds | null = null;
-let windowBoundsCaptureInterval: NodeJS.Timeout | null = null;
+const selectedWindowBoundsTracker = createSelectedWindowBoundsTracker({
+	platform: process.platform,
+	getSelectedSource: () => selectedSource,
+	setSelectedWindowBounds: (bounds) => {
+		selectedWindowBounds = bounds;
+	},
+	getNativeWindowSources: getNativeMacWindowSources,
+});
 
 function stopCursorCapture() {
 	if (cursorCaptureInterval) {
@@ -1093,59 +1037,11 @@ function stopInteractionCapture() {
 }
 
 function stopWindowBoundsCapture() {
-	if (windowBoundsCaptureInterval) {
-		clearInterval(windowBoundsCaptureInterval);
-		windowBoundsCaptureInterval = null;
-	}
-	selectedWindowBounds = null;
-}
-
-async function resolveMacWindowBounds(source: SelectedSource): Promise<WindowBounds | null> {
-	const windowId = parseWindowId(source.id);
-	if (!windowId) {
-		return null;
-	}
-
-	try {
-		const nativeSources = await getNativeMacWindowSources({ maxAgeMs: 250 });
-		const matchedSource = nativeSources.find((entry) => parseWindowId(entry.id) === windowId);
-		return getWindowBoundsFromNativeSource(matchedSource);
-	} catch {
-		return null;
-	}
-}
-
-async function refreshSelectedWindowBounds() {
-	if (!selectedSource?.id?.startsWith("window:")) {
-		selectedWindowBounds = null;
-		return;
-	}
-
-	let bounds: WindowBounds | null = null;
-
-	if (process.platform === "darwin") {
-		bounds = await resolveMacWindowBounds(selectedSource);
-	} else if (process.platform === "linux") {
-		bounds = await resolveLinuxWindowBounds(selectedSource);
-	}
-
-	selectedWindowBounds = bounds;
+	selectedWindowBoundsTracker.stop();
 }
 
 function startWindowBoundsCapture() {
-	stopWindowBoundsCapture();
-
-	if (
-		!["darwin", "linux"].includes(process.platform) ||
-		!selectedSource?.id?.startsWith("window:")
-	) {
-		return;
-	}
-
-	void refreshSelectedWindowBounds();
-	windowBoundsCaptureInterval = setInterval(() => {
-		void refreshSelectedWindowBounds();
-	}, 250);
+	selectedWindowBoundsTracker.start();
 }
 
 function getNormalizedCursorPoint() {
@@ -1443,173 +1339,16 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("show-source-highlight", async (_, source: SelectedSource) => {
 		try {
-			const isWindow = source.id?.startsWith("window:");
-			const windowId = isWindow ? parseWindowId(source.id) : null;
-
-			// ── 1. Bring window to front & get its bounds via AppleScript ──
-			let asBounds: { x: number; y: number; width: number; height: number } | null = null;
-
-			if (isWindow && process.platform === "darwin") {
-				const appName = source.appName || source.name?.split(" — ")[0]?.trim();
-				if (appName) {
-					// Single AppleScript: activate AND return window bounds
-					try {
-						const { stdout } = await execFileAsync(
-							"osascript",
-							[
-								"-e",
-								`tell application "${appName}"\n` +
-									`  activate\n` +
-									`end tell\n` +
-									`delay 0.3\n` +
-									`tell application "System Events"\n` +
-									`  tell process "${appName}"\n` +
-									`    set frontWindow to front window\n` +
-									`    set {x1, y1} to position of frontWindow\n` +
-									`    set {w1, h1} to size of frontWindow\n` +
-									`    return (x1 as text) & "," & (y1 as text) & "," & (w1 as text) & "," & (h1 as text)\n` +
-									`  end tell\n` +
-									`end tell`,
-							],
-							{ timeout: 4000 },
-						);
-						const parts = stdout.trim().split(",").map(Number);
-						if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
-							asBounds = { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
-						}
-					} catch {
-						// Fallback: just activate without bounds
-						try {
-							await execFileAsync(
-								"osascript",
-								["-e", `tell application "${appName}" to activate`],
-								{ timeout: 2000 },
-							);
-							await new Promise((resolve) => setTimeout(resolve, 350));
-						} catch {
-							/* ignore */
-						}
-					}
-				}
-			} else if (windowId && process.platform === "linux") {
-				try {
-					await execFileAsync("wmctrl", ["-i", "-a", `0x${windowId.toString(16)}`], {
-						timeout: 1500,
-					});
-				} catch {
-					try {
-						await execFileAsync("xdotool", ["windowactivate", String(windowId)], { timeout: 1500 });
-					} catch {
-						/* not available */
-					}
-				}
-				await new Promise((resolve) => setTimeout(resolve, 250));
-			}
-
-			// ── 2. Resolve bounds ──
-			let bounds = asBounds;
-
-			if (!bounds) {
-				if (source.id?.startsWith("screen:")) {
-					bounds = getDisplayBoundsForSource(source);
-				} else if (isWindow) {
-					if (process.platform === "darwin") {
-						bounds = await resolveMacWindowBounds(source);
-					} else if (process.platform === "linux") {
-						bounds = await resolveLinuxWindowBounds(source);
-					}
-				}
-			}
-
-			if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
-				bounds = getDisplayBoundsForSource(source);
-			}
-
-			// ── 3. Show traveling wave highlight ──
-			const pad = 6;
-			const highlightWin = new BrowserWindow({
-				x: bounds.x - pad,
-				y: bounds.y - pad,
-				width: bounds.width + pad * 2,
-				height: bounds.height + pad * 2,
-				frame: false,
-				transparent: true,
-				alwaysOnTop: true,
-				skipTaskbar: true,
-				hasShadow: false,
-				resizable: false,
-				focusable: false,
-				webPreferences: { nodeIntegration: false, contextIsolation: true },
+			await showSourceHighlight(source, {
+				platform: process.platform,
+				getDisplayBounds: (candidateSource) =>
+					getDisplayBoundsForSource(
+						candidateSource,
+						getScreen().getAllDisplays(),
+						getScreen().getPrimaryDisplay().bounds,
+					),
+				getNativeWindowSources: getNativeMacWindowSources,
 			});
-
-			highlightWin.setIgnoreMouseEvents(true);
-
-			const html = `<!DOCTYPE html>
-<html><head><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:transparent;overflow:hidden;width:100vw;height:100vh}
-
-.border-wrap{
-  position:fixed;inset:0;border-radius:10px;padding:3px;
-  background:conic-gradient(from var(--angle,0deg),
-    transparent 0%,
-    transparent 60%,
-    rgba(99,96,245,.15) 70%,
-    rgba(99,96,245,.9) 80%,
-    rgba(123,120,255,1) 85%,
-    rgba(99,96,245,.9) 90%,
-    rgba(99,96,245,.15) 95%,
-    transparent 100%
-  );
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
-  animation:spin 1.2s linear forwards, fadeAll 1.6s ease-out forwards;
-}
-
-.glow-wrap{
-  position:fixed;inset:-4px;border-radius:14px;padding:6px;
-  background:conic-gradient(from var(--angle,0deg),
-    transparent 0%,
-    transparent 65%,
-    rgba(99,96,245,.3) 78%,
-    rgba(123,120,255,.5) 85%,
-    rgba(99,96,245,.3) 92%,
-    transparent 100%
-  );
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
-  filter:blur(8px);
-  animation:spin 1.2s linear forwards, fadeAll 1.6s ease-out forwards;
-}
-
-@property --angle{
-  syntax:'<angle>';
-  initial-value:0deg;
-  inherits:false;
-}
-
-@keyframes spin{
-  0%{--angle:0deg}
-  100%{--angle:360deg}
-}
-
-@keyframes fadeAll{
-  0%,60%{opacity:1}
-  100%{opacity:0}
-}
-</style></head><body>
-<div class="glow-wrap"></div>
-<div class="border-wrap"></div>
-</body></html>`;
-
-			await highlightWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
-			setTimeout(() => {
-				if (!highlightWin.isDestroyed()) highlightWin.close();
-			}, 1700);
-
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to show source highlight:", error);
