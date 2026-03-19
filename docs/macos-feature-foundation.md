@@ -33,6 +33,7 @@
 1. `electron/ipc/handlers.ts` mixes macOS, Windows, Linux, and FFmpeg fallback branches in a single file. The cleanest future split is `macos.ts`, `windows.ts`, and `shared.ts` service modules behind one registration layer.
 2. `electron/preload.ts` still exposes Windows-only IPC calls (`isNativeWindowsCaptureAvailable`, `muxNativeWindowsRecording`). If the app becomes truly macOS-only, these can move behind a macOS-only preload contract.
 3. `package.json` still runs Windows helper builds as part of `build:platform-native-helpers`. The scripts already skip on non-Windows hosts, but the build graph remains cross-platform by default.
+4. The next low-risk extraction targets inside `handlers.ts` are now documented in `docs/macos-handler-split-review.md`, with dedicated seams for cursor monitor runtime plus source highlight / window-bounds logic.
 
 ## Localization status
 
@@ -55,5 +56,6 @@
 ## Suggested next passes
 
 1. Extract `VideoEditor` toast strings and `TimelineEditor` toolbar/empty-state strings into the existing namespace files.
-2. Split macOS recording IPC from Windows/Linux branches to reduce risk when adding capture features.
-3. Add lightweight tests for locale config / locale loading, plus a renderer-facing smoke check for key hardcoded strings that should stay localized.
+2. Split cursor monitor runtime out of `electron/ipc/handlers.ts` using a pure stdout parser plus a thin process adapter (`docs/macos-handler-split-review.md`).
+3. Split source highlight / window-bounds logic so highlight placement and cursor normalization share the same bounds utilities.
+4. Add pure helper tests alongside those new modules before moving more IPC registration code.
