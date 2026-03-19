@@ -524,70 +524,6 @@ function waitForFfmpegCaptureStop(process: ChildProcessWithoutNullStreams, outpu
 	});
 }
 
-function getDisplayBoundsForSource(source: SelectedSource) {
-	const sourceDisplayId = Number(source?.display_id);
-	if (Number.isFinite(sourceDisplayId)) {
-		const matched = getScreen()
-			.getAllDisplays()
-			.find((display) => display.id === sourceDisplayId);
-		if (matched) {
-			return matched.bounds;
-		}
-	}
-
-	return getScreen().getPrimaryDisplay().bounds;
-}
-
-function parseXwininfoBounds(stdout: string): WindowBounds | null {
-	const absX = stdout.match(/Absolute upper-left X:\s+(-?\d+)/);
-	const absY = stdout.match(/Absolute upper-left Y:\s+(-?\d+)/);
-	const width = stdout.match(/Width:\s+(\d+)/);
-	const height = stdout.match(/Height:\s+(\d+)/);
-
-	if (!absX || !absY || !width || !height) {
-		return null;
-	}
-
-	return {
-		x: Number.parseInt(absX[1], 10),
-		y: Number.parseInt(absY[1], 10),
-		width: Number.parseInt(width[1], 10),
-		height: Number.parseInt(height[1], 10),
-	};
-}
-
-async function resolveLinuxWindowBounds(source: SelectedSource): Promise<WindowBounds | null> {
-	const windowId = parseWindowId(source?.id);
-
-	if (windowId) {
-		try {
-			const { stdout } = await execFileAsync("xwininfo", ["-id", String(windowId)], {
-				timeout: 1500,
-			});
-			const bounds = parseXwininfoBounds(stdout);
-			if (bounds && bounds.width > 0 && bounds.height > 0) {
-				return bounds;
-			}
-		} catch {
-			// fall back to title lookup below
-		}
-	}
-
-	const windowTitle =
-		typeof source.windowTitle === "string" ? source.windowTitle.trim() : source.name.trim();
-	if (!windowTitle) {
-		return null;
-	}
-
-	try {
-		const { stdout } = await execFileAsync("xwininfo", ["-name", windowTitle], { timeout: 1500 });
-		const bounds = parseXwininfoBounds(stdout);
-		return bounds && bounds.width > 0 && bounds.height > 0 ? bounds : null;
-	} catch {
-		return null;
-	}
-}
-
 async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string) {
 	const commonOutputArgs = [
 		"-an",
@@ -662,7 +598,11 @@ async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string
 			];
 		}
 
-		const bounds = getDisplayBoundsForSource(source);
+		const bounds = getDisplayBoundsForSource(
+			source,
+			getScreen().getAllDisplays(),
+			getScreen().getPrimaryDisplay().bounds,
+		);
 		return [
 			"-y",
 			"-f",
