@@ -26,10 +26,10 @@ import {
 	clamp,
 	getHookCursorScreenPoint,
 	getHookMouseButton,
-	getWindowBoundsFromNativeSource,
 	mergePendingCursorSamples,
 	normalizeCursorPointForBounds,
 } from "./cursorTelemetry";
+import { createCursorMonitorRuntime } from "./cursorMonitorRuntime";
 import type { HookMouseEventLike, WindowBounds } from "./cursorTelemetry";
 import {
 	getAccessibilityPermissionStatus,
@@ -52,6 +52,13 @@ import {
 	collectOwnWindowNames,
 	normalizeDesktopSourceName,
 } from "./sourceSelection";
+import { showSourceHighlight } from "./sourceHighlight";
+import {
+	createSelectedWindowBoundsTracker,
+	getDisplayBoundsForSource,
+	parseWindowId,
+	resolveLinuxWindowBounds,
+} from "./windowBounds";
 import { RECORDINGS_DIR } from "../main";
 import { hideCursor, showCursor } from "../cursorHider";
 import { createCountdownWindow, getCountdownWindow, closeCountdownWindow } from "../windows";
@@ -91,8 +98,6 @@ let nativeCaptureTargetPath: string | null = null;
 let nativeCaptureStopRequested = false;
 let nativeCaptureMicrophonePath: string | null = null;
 let nativeCapturePaused = false;
-let nativeCursorMonitorProcess: ChildProcessWithoutNullStreams | null = null;
-let nativeCursorMonitorOutputBuffer = "";
 let windowsCaptureProcess: ChildProcessWithoutNullStreams | null = null;
 let windowsCaptureOutputBuffer = "";
 let windowsCaptureTargetPath: string | null = null;
@@ -403,12 +408,6 @@ async function pruneAutoRecordings(exemptPaths: string[] = []) {
 			console.warn("Failed to prune old auto recording:", entry.filePath, error);
 		}
 	}
-}
-
-function parseWindowId(sourceId?: string) {
-	if (!sourceId) return null;
-	const match = sourceId.match(/^window:(\d+)/);
-	return match ? Number.parseInt(match[1], 10) : null;
 }
 
 function loadFfmpegStatic() {
