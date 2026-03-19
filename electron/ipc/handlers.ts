@@ -422,16 +422,24 @@ function loadFfmpegStatic() {
 	return null;
 }
 
+type UiohookLike = {
+	on?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	off?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	removeListener?: (eventName: string, handler: (event: HookMouseEventLike) => void) => void;
+	start?: () => void;
+	stop?: () => void;
+};
+
 function loadUiohookModule() {
 	const moduleExports = nodeRequire("uiohook-napi") as {
-		uIOhook?: unknown;
-		uiohook?: unknown;
-		Uiohook?: unknown;
-		default?: unknown;
+		uIOhook?: UiohookLike;
+		uiohook?: UiohookLike;
+		Uiohook?: UiohookLike;
+		default?: UiohookLike | { uIOhook?: UiohookLike; uiohook?: UiohookLike };
 	};
 	const defaultExport =
 		typeof moduleExports.default === "object" && moduleExports.default !== null
-			? (moduleExports.default as { uIOhook?: unknown; uiohook?: unknown })
+			? (moduleExports.default as { uIOhook?: UiohookLike; uiohook?: UiohookLike })
 			: null;
 
 	return (
