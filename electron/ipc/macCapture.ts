@@ -1,12 +1,7 @@
 import path from "node:path";
 import type { NativeMacRecordingOptions, SelectedSource } from "./contracts";
 import { normalizeDesktopSourceName } from "./sourceSelection";
-
-function parseWindowId(sourceId?: string) {
-	if (!sourceId) return null;
-	const match = sourceId.match(/^window:(\d+)/);
-	return match ? Number.parseInt(match[1], 10) : null;
-}
+import { parseWindowId } from "./windowBounds";
 
 export function shouldBlockOwnWindowCapture(options: {
 	source: SelectedSource;
