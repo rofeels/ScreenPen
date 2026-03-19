@@ -23,7 +23,7 @@
 
 ## Recommended next steps
 
-1. Split `electron/ipc/handlers.ts` into feature modules (`capture`, `permissions`, `files`, `editor-session`, `countdown`).
+1. Keep `electron/ipc/handlers.ts` as the registration layer, but extract cursor monitor runtime and source highlight/window-bounds helpers next (`docs/macos-handler-split-review.md`).
 2. Keep macOS native helpers as the primary implementation path and treat Windows/Linux branches as isolated compatibility code.
 3. Continue migrating renderer literals namespace-by-namespace and keep `npm run i18n:check` green.
-4. Add focused tests around i18n plumbing and any future IPC modules before larger feature work.
+4. Add focused tests around any new pure IPC helpers before moving additional process/window side effects behind adapters.
