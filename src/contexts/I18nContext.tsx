@@ -137,7 +137,7 @@ function getInitialLocale(): AppLocale {
 		return normalizeLocale(storedLocale);
 	}
 
-	// Product default must be English on first launch unless user explicitly
+	// Product default must be Korean on first launch unless user explicitly
 	// selected another locale and we persisted it in localStorage.
 	return DEFAULT_LOCALE;
 }

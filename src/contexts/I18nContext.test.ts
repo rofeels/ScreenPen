@@ -14,9 +14,9 @@ describe("normalizeLocale", () => {
 		expect(normalizeLocale("zh-Hans-CN")).toBe("zh-CN");
 	});
 
-	it("falls back to english for unsupported locales", () => {
-		expect(normalizeLocale("fr")).toBe("en");
-		expect(normalizeLocale(undefined)).toBe("en");
+	it("falls back to Korean for unsupported locales", () => {
+		expect(normalizeLocale("fr")).toBe("ko");
+		expect(normalizeLocale(undefined)).toBe("ko");
 	});
 });
 

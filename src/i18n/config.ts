@@ -1,4 +1,4 @@
-export const DEFAULT_LOCALE = "en" as const;
+export const DEFAULT_LOCALE = "ko" as const;
 
 export const SUPPORTED_LOCALES = ["en", "es", "ko", "zh-CN"] as const;
 

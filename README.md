@@ -10,6 +10,21 @@ It is a **public fork** of the original [webadderall/Recordly](https://github.co
 
 ## Download / Build
 
+### Homebrew (recommended)
+
+```bash
+brew install --cask NewTurn2017/homebrew-tap/screencraft
+```
+
+- Homebrew tap: https://github.com/NewTurn2017/homebrew-tap
+- Cask file: https://github.com/NewTurn2017/homebrew-tap/blob/main/Casks/screencraft.rb
+- Latest release downloads: https://github.com/NewTurn2017/ScreenCraft/releases/latest
+
+### Direct release download
+
+- Releases: https://github.com/NewTurn2017/ScreenCraft/releases
+- Latest: https://github.com/NewTurn2017/ScreenCraft/releases/latest
+
 ### macOS local build
 
 ```bash
