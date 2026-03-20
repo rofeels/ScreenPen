@@ -88,7 +88,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build renderer and main bundles
         run: |
@@ -97,7 +97,12 @@ jobs:
           npx vite build
 
       - name: Build notarized macOS x64 artifact
-        run: npx electron-builder --mac dmg --x64 --publish never
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx electron-builder --mac dmg --x64 --publish never
+          DMG=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.dmg' | head -n 1)
+          mv "$DMG" release/ScreenCraft-x64.dmg
 
       - name: Verify artifact exists
         run: ls -la release/ScreenCraft-x64.dmg
@@ -131,7 +136,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build renderer and main bundles
         run: |
@@ -140,7 +145,12 @@ jobs:
           npx vite build
 
       - name: Build notarized macOS arm64 artifact
-        run: npx electron-builder --mac dmg --arm64 --publish never
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx electron-builder --mac dmg --arm64 --publish never
+          DMG=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.dmg' | head -n 1)
+          mv "$DMG" release/ScreenCraft-arm64.dmg
 
       - name: Verify artifact exists
         run: ls -la release/ScreenCraft-arm64.dmg
@@ -165,7 +175,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build renderer and main bundles
         shell: pwsh
@@ -177,7 +187,10 @@ jobs:
 
       - name: Build Windows x64 artifact
         shell: pwsh
-        run: npx electron-builder --win nsis --x64 --publish never
+        run: |
+          npx electron-builder --win nsis --x64 --publish never
+          $exe = Get-ChildItem release -Filter "*.exe" | Select-Object -First 1
+          Rename-Item -Path $exe.FullName -NewName "ScreenCraft-windows-x64.exe"
 
       - name: Verify artifact exists
         shell: pwsh
@@ -203,7 +216,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build renderer and main bundles
         run: |
@@ -212,7 +225,12 @@ jobs:
           npx vite build
 
       - name: Build Linux x64 artifact
-        run: npx electron-builder --linux AppImage --x64 --publish never
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx electron-builder --linux AppImage --x64 --publish never
+          APPIMAGE=$(find release -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
+          mv "$APPIMAGE" release/ScreenCraft-linux-x64.AppImage
 
       - name: Verify artifact exists
         run: ls -la release/ScreenCraft-linux-x64.AppImage
