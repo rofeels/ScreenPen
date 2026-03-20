@@ -100,6 +100,12 @@ ipcMain.on("set-has-unsaved-changes", (_event, hasChanges: boolean) => {
 function createWindow() {
 	ensureDockVisible();
 	setApplicationMenuMode("hud");
+	const existingHudWindow = getHudWindow();
+	if (existingHudWindow) {
+		mainWindow = existingHudWindow;
+		focusWindow(existingHudWindow);
+		return;
+	}
 	mainWindow = createHudOverlayWindow();
 }
 
@@ -119,34 +125,70 @@ function ensureDockVisible() {
 	app.dock.show();
 }
 
+function focusWindow(window: BrowserWindow | null) {
+	if (!window || window.isDestroyed()) {
+		return;
+	}
+
+	window.show();
+	if (window.isMinimized()) {
+		window.restore();
+	}
+	window.moveTop();
+	window.focus();
+}
+
+function isHudWindow(window: BrowserWindow) {
+	return window.webContents.getURL().includes("windowType=hud-overlay");
+}
+
 function focusOrCreateMainWindow() {
-	if (BrowserWindow.getAllWindows().length === 0 || !mainWindow || mainWindow.isDestroyed()) {
+	const existingWindow =
+		getEditorWindow() ??
+		(settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null) ??
+		(sourceSelectorWindow && !sourceSelectorWindow.isDestroyed() ? sourceSelectorWindow : null) ??
+		getHudWindow() ??
+		BrowserWindow.getAllWindows().find((window) => !window.isDestroyed()) ??
+		null;
+
+	if (!existingWindow) {
 		createWindow();
 		return;
 	}
 
-	if (mainWindow && !mainWindow.isDestroyed()) {
-		ensureDockVisible();
+	ensureDockVisible();
+
+	if (isHudWindow(existingWindow)) {
+		mainWindow = existingWindow;
 		// On Linux/Wayland, focus() often doesn't take effect (compositor ignores it). Apps like Telegram
 		// work because they receive an XDG activation token via StatusNotifierItem.ProvideXdgActivationToken;
 		// Electron's tray doesn't handle that yet. Workaround: destroy and recreate the HUD so the new
 		// window gets focus (creation path works). Only for HUD, not editor.
-		if (process.platform === "linux" && !mainWindow.isFocused() && !isEditorWindow(mainWindow)) {
-			const win = mainWindow;
+		if (process.platform === "linux" && !existingWindow.isFocused()) {
+			const win = existingWindow;
 			mainWindow = null;
 			win.once("closed", () => createWindow());
 			win.destroy();
 			return;
 		}
-		mainWindow.show();
-		if (mainWindow.isMinimized()) mainWindow.restore();
-		mainWindow.moveTop();
-		mainWindow.focus();
 	}
+
+	focusWindow(existingWindow);
 }
 
 function isEditorWindow(window: BrowserWindow) {
 	return window.webContents.getURL().includes("windowType=editor");
+}
+
+function getHudWindow() {
+	if (mainWindow && !mainWindow.isDestroyed() && isHudWindow(mainWindow)) {
+		return mainWindow;
+	}
+
+	return (
+		BrowserWindow.getAllWindows().find((window) => !window.isDestroyed() && isHudWindow(window)) ??
+		null
+	);
 }
 
 function getEditorWindow() {
@@ -192,19 +234,14 @@ function sendEditorMenuAction(
 	}
 
 	targetWindow.show();
-	if (targetWindow.isMinimized()) targetWindow.restore();
-	targetWindow.moveTop();
-	targetWindow.focus();
+	focusWindow(targetWindow);
 	targetWindow.webContents.send(channel);
 }
 
 function openSettingsWindow() {
 	setApplicationMenuMode("full");
 	if (settingsWindow && !settingsWindow.isDestroyed()) {
-		settingsWindow.show();
-		if (settingsWindow.isMinimized()) settingsWindow.restore();
-		settingsWindow.moveTop();
-		settingsWindow.focus();
+		focusWindow(settingsWindow);
 		return;
 	}
 
@@ -425,6 +462,12 @@ function updateTrayMenu(recording: boolean = false) {
 function createEditorWindowWrapper() {
 	ensureDockVisible();
 	setApplicationMenuMode("full");
+	const existingEditorWindow = getEditorWindow();
+	if (existingEditorWindow) {
+		mainWindow = existingEditorWindow;
+		focusWindow(existingEditorWindow);
+		return existingEditorWindow;
+	}
 	if (mainWindow) {
 		closeEditorWindowBypassingUnsavedPrompt(mainWindow);
 		mainWindow = null;
@@ -472,6 +515,10 @@ function createEditorWindowWrapper() {
 function createSourceSelectorWindowWrapper() {
 	ensureDockVisible();
 	setApplicationMenuMode("hud");
+	if (sourceSelectorWindow && !sourceSelectorWindow.isDestroyed()) {
+		focusWindow(sourceSelectorWindow);
+		return sourceSelectorWindow;
+	}
 	sourceSelectorWindow = createSourceSelectorWindow();
 	sourceSelectorWindow.on("closed", () => {
 		sourceSelectorWindow = null;
