@@ -137,6 +137,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openSettingsWindow: () => {
 		return ipcRenderer.invoke("open-settings-window");
 	},
+	checkForUpdates: () => {
+		return ipcRenderer.invoke("check-for-updates");
+	},
+	getAutoUpdateStatus: () => {
+		return ipcRenderer.invoke("get-auto-update-status");
+	},
+	getAppVersion: () => {
+		return ipcRenderer.invoke("get-app-version");
+	},
+	onAutoUpdateStatus: (callback: (payload: unknown) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);
+		ipcRenderer.on("auto-update-status", listener);
+		return () => ipcRenderer.removeListener("auto-update-status", listener);
+	},
 	saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("save-exported-video", videoData, fileName);
 	},

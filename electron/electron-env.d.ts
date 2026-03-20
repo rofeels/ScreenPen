@@ -126,6 +126,22 @@ declare global {
 			openScreenRecordingPreferences: () => Promise<{ success: boolean; error?: string }>;
 			openAccessibilityPreferences: () => Promise<{ success: boolean; error?: string }>;
 			openSettingsWindow: () => Promise<{ success: boolean; error?: string }>;
+			checkForUpdates: () => Promise<{ success: boolean }>;
+			getAutoUpdateStatus: () => Promise<{
+				status: string;
+				version?: string;
+				message?: string;
+				progressPercent?: number;
+			}>;
+			getAppVersion: () => Promise<string>;
+			onAutoUpdateStatus: (
+				callback: (payload: {
+					status: string;
+					version?: string;
+					message?: string;
+					progressPercent?: number;
+				}) => void,
+			) => () => void;
 			saveExportedVideo: (
 				videoData: ArrayBuffer,
 				fileName: string,

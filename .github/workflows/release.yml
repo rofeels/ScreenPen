@@ -112,17 +112,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx electron-builder --mac dmg --x64 --publish never
+          npx electron-builder --mac dmg zip --x64 --publish never
           DMG=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.dmg' | head -n 1)
+          ZIP=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.zip' | head -n 1)
+          YML=$(find release -maxdepth 1 -type f -name 'latest*.yml' | head -n 1)
           mv "$DMG" release/ScreenCraft-x64.dmg
+          mv "$ZIP" release/ScreenCraft-x64.zip
+          mv "$YML" release/latest-mac.yml
 
       - name: Verify artifact exists
-        run: ls -la release/ScreenCraft-x64.dmg
+        run: |
+          ls -la release/ScreenCraft-x64.dmg
+          ls -la release/ScreenCraft-x64.zip
+          ls -la release/latest-mac.yml
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-x64
-          path: release/ScreenCraft-x64.dmg
+          path: |
+            release/ScreenCraft-x64.dmg
+            release/ScreenCraft-x64.zip
+            release/latest-mac.yml
           if-no-files-found: error
 
   build-macos-arm64:
@@ -172,17 +182,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx electron-builder --mac dmg --arm64 --publish never
+          npx electron-builder --mac dmg zip --arm64 --publish never
           DMG=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.dmg' | head -n 1)
+          ZIP=$(find release -maxdepth 1 -type f -name 'ScreenCraft-*.zip' | head -n 1)
+          YML=$(find release -maxdepth 1 -type f -name 'latest*.yml' | head -n 1)
           mv "$DMG" release/ScreenCraft-arm64.dmg
+          mv "$ZIP" release/ScreenCraft-arm64.zip
+          mv "$YML" release/latest-mac-arm64.yml
 
       - name: Verify artifact exists
-        run: ls -la release/ScreenCraft-arm64.dmg
+        run: |
+          ls -la release/ScreenCraft-arm64.dmg
+          ls -la release/ScreenCraft-arm64.zip
+          ls -la release/latest-mac-arm64.yml
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64
-          path: release/ScreenCraft-arm64.dmg
+          path: |
+            release/ScreenCraft-arm64.dmg
+            release/ScreenCraft-arm64.zip
+            release/latest-mac-arm64.yml
           if-no-files-found: error
 
   publish-release:
@@ -214,4 +234,8 @@ jobs:
           generate_release_notes: true
           files: |
             dist-release/ScreenCraft-arm64.dmg
+            dist-release/ScreenCraft-arm64.zip
             dist-release/ScreenCraft-x64.dmg
+            dist-release/ScreenCraft-x64.zip
+            dist-release/latest-mac.yml
+            dist-release/latest-mac-arm64.yml

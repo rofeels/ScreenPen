@@ -92,7 +92,8 @@
 			"recordings": "Recordings",
 			"hud": "HUD",
 			"shortcuts": "Keyboard shortcuts",
-			"permissions": "Permissions"
+			"permissions": "Permissions",
+			"updates": "Updates"
 		},
 		"generalDescription": "Choose the default language and recording countdown.",
 		"language": "Language",
@@ -110,6 +111,7 @@
 		"configurableShortcuts": "Configurable",
 		"fixedShortcuts": "Fixed",
 		"permissionsDescription": "ScreenCraft uses macOS privacy permissions for screen capture and cursor tracking.",
+		"updatesDescription": "Check for new ScreenCraft releases published on GitHub.",
 		"screenRecordingPermission": "Screen Recording",
 		"screenRecordingPermissionDescription": "Required to capture your screen contents on macOS.",
 		"accessibilityPermission": "Accessibility",
@@ -117,6 +119,21 @@
 		"openSystemSettings": "Open System Settings",
 		"refreshPermissions": "Refresh",
 		"permissionRestartHint": "Some macOS permission changes require quitting and reopening ScreenCraft.",
+		"updates": {
+			"currentVersion": "Current version",
+			"updateStatus": "Update status",
+			"checkForUpdates": "Check now",
+			"status": {
+				"idle": "Ready to check for updates.",
+				"checking": "Checking for updates…",
+				"available": "Update {{version}} is available.",
+				"downloading": "Downloading update… {{progress}}%",
+				"downloaded": "Update downloaded. Restart to install.",
+				"upToDate": "You already have the latest version.",
+				"error": "Update error: {{error}}",
+				"notSupported": "Automatic updates are currently available only for packaged macOS builds."
+			}
+		},
 		"status": {
 			"granted": "Granted",
 			"notGranted": "Not granted",

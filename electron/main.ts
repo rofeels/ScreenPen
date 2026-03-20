@@ -19,6 +19,7 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
+import { checkForUpdatesManually, setupAutoUpdater } from "./updater";
 import {
 	createEditorWindow,
 	createHudOverlayWindow,
@@ -272,6 +273,10 @@ function setupApplicationMenu(mode: "hud" | "full" = currentApplicationMenuMode)
 					label: "Settings…",
 					accelerator: "CmdOrCtrl+,",
 					click: () => openSettingsWindow(),
+				},
+				{
+					label: "Check for Updates…",
+					click: () => void checkForUpdatesManually(),
 				},
 				...(mode === "hud"
 					? [
@@ -591,6 +596,7 @@ app.whenReady().then(async () => {
 	setApplicationMenuMode("hud");
 	// Ensure recordings directory exists
 	await ensureRecordingsDir();
+	setupAutoUpdater();
 
 	registerIpcHandlers(
 		createEditorWindowWrapper,

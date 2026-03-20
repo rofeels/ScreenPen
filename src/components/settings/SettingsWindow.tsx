@@ -114,6 +114,13 @@ export function SettingsWindow() {
 	const [hideHudFromCapture, setHideHudFromCapture] = useState(true);
 	const [screenPermissionStatus, setScreenPermissionStatus] = useState<string>("unknown");
 	const [accessibilityTrusted, setAccessibilityTrusted] = useState<boolean | null>(null);
+	const [appVersion, setAppVersion] = useState<string>("");
+	const [autoUpdateStatus, setAutoUpdateStatus] = useState<{
+		status: string;
+		version?: string;
+		message?: string;
+		progressPercent?: number;
+	}>({ status: "idle" });
 	const [scrollLabels, setScrollLabels] = useState({
 		pan: tShortcuts("bindings.panTimeline"),
 		zoom: tShortcuts("bindings.zoomTimeline"),
@@ -191,6 +198,33 @@ export function SettingsWindow() {
 	useEffect(() => {
 		void refreshPermissionsAndSettings();
 	}, [refreshPermissionsAndSettings]);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		void window.electronAPI.getAppVersion().then((version) => {
+			if (!cancelled) {
+				setAppVersion(version);
+			}
+		});
+
+		void window.electronAPI.getAutoUpdateStatus().then((status) => {
+			if (!cancelled) {
+				setAutoUpdateStatus(status);
+			}
+		});
+
+		const unsubscribe = window.electronAPI.onAutoUpdateStatus?.((status) => {
+			if (!cancelled) {
+				setAutoUpdateStatus(status);
+			}
+		});
+
+		return () => {
+			cancelled = true;
+			unsubscribe?.();
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!showPermissions) {
@@ -315,6 +349,33 @@ export function SettingsWindow() {
 			return { label: tShortcuts(shortcut.labelKey), value: shortcut.display };
 		});
 	}, [scrollLabels.pan, scrollLabels.zoom, tShortcuts]);
+
+	const autoUpdateStatusLabel = useMemo(() => {
+		switch (autoUpdateStatus.status) {
+			case "checking":
+				return tSettings("preferences.updates.status.checking");
+			case "available":
+				return tSettings("preferences.updates.status.available", undefined, {
+					version: autoUpdateStatus.version ?? "",
+				});
+			case "downloading":
+				return tSettings("preferences.updates.status.downloading", undefined, {
+					progress: Math.round(autoUpdateStatus.progressPercent ?? 0),
+				});
+			case "downloaded":
+				return tSettings("preferences.updates.status.downloaded");
+			case "up-to-date":
+				return tSettings("preferences.updates.status.upToDate");
+			case "error":
+				return tSettings("preferences.updates.status.error", undefined, {
+					error: autoUpdateStatus.message ?? "",
+				});
+			case "not-supported":
+				return tSettings("preferences.updates.status.notSupported");
+			default:
+				return tSettings("preferences.updates.status.idle");
+		}
+	}, [autoUpdateStatus, tSettings]);
 
 	return (
 		<div className="min-h-screen bg-[#09090b] text-white">
@@ -466,6 +527,46 @@ export function SettingsWindow() {
 					</div>
 
 					<div className="space-y-6">
+						<SectionCard
+							icon={<RefreshCw className="h-5 w-5" />}
+							title={tSettings("preferences.sections.updates")}
+							description={tSettings("preferences.updatesDescription")}
+							action={
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="text-slate-300 hover:bg-white/10 hover:text-white"
+									onClick={() => void window.electronAPI.checkForUpdates()}
+								>
+									{tSettings("preferences.updates.checkForUpdates")}
+								</Button>
+							}
+						>
+							<div className="space-y-4">
+								<div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+									<div className="flex items-center justify-between gap-4">
+										<div>
+											<p className="text-sm font-medium text-slate-100">
+												{tSettings("preferences.updates.currentVersion")}
+											</p>
+											<p className="mt-1 text-sm text-slate-400">{appVersion || "—"}</p>
+										</div>
+										<StatusBadge
+											active={autoUpdateStatus.status === "up-to-date"}
+											label={autoUpdateStatus.status === "up-to-date" ? "Latest" : "Updates"}
+										/>
+									</div>
+								</div>
+								<div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+									<p className="text-sm font-medium text-slate-100">
+										{tSettings("preferences.updates.updateStatus")}
+									</p>
+									<p className="mt-1 text-sm leading-6 text-slate-400">{autoUpdateStatusLabel}</p>
+								</div>
+							</div>
+						</SectionCard>
+
 						<SectionCard
 							icon={<Keyboard className="h-5 w-5" />}
 							title={tSettings("preferences.sections.shortcuts")}

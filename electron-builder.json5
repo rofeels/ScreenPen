@@ -9,6 +9,13 @@
     "electron/native/**"
   ],
   "productName": "ScreenCraft",
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "NewTurn2017",
+      "repo": "ScreenCraft"
+    }
+  ],
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
@@ -42,6 +49,10 @@
     "target": [
       {
         "target": "dmg",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "zip",
         "arch": ["x64", "arm64"]
       }
     ],

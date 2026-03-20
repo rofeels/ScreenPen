@@ -92,7 +92,8 @@
 			"recordings": "录制",
 			"hud": "HUD",
 			"shortcuts": "键盘快捷键",
-			"permissions": "权限"
+			"permissions": "权限",
+			"updates": "更新"
 		},
 		"generalDescription": "设置默认语言和录制前倒计时。",
 		"language": "语言",
@@ -110,6 +111,7 @@
 		"configurableShortcuts": "可配置",
 		"fixedShortcuts": "固定",
 		"permissionsDescription": "ScreenCraft 在 macOS 上依赖隐私权限来录制屏幕和跟踪光标。",
+		"updatesDescription": "检查 GitHub 上发布的新版 ScreenCraft。",
 		"screenRecordingPermission": "屏幕录制",
 		"screenRecordingPermissionDescription": "在 macOS 上录制屏幕内容所必需。",
 		"accessibilityPermission": "辅助功能",
@@ -117,6 +119,21 @@
 		"openSystemSettings": "打开系统设置",
 		"refreshPermissions": "刷新",
 		"permissionRestartHint": "某些 macOS 权限变更需要退出并重新打开 ScreenCraft 才会生效。",
+		"updates": {
+			"currentVersion": "当前版本",
+			"updateStatus": "更新状态",
+			"checkForUpdates": "立即检查",
+			"status": {
+				"idle": "已准备好检查更新。",
+				"checking": "正在检查更新…",
+				"available": "发现可用更新 {{version}}。",
+				"downloading": "正在下载更新… {{progress}}%",
+				"downloaded": "更新已下载，重启后即可安装。",
+				"upToDate": "当前已是最新版本。",
+				"error": "更新错误：{{error}}",
+				"notSupported": "自动更新目前仅适用于已打包的 macOS 构建。"
+			}
+		},
 		"status": {
 			"granted": "已授权",
 			"notGranted": "未授权",
