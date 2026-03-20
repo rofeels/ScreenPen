@@ -54,9 +54,7 @@ That triggers:
 
 1. signed + notarized macOS x64 build
 2. signed + notarized macOS arm64 build
-3. Windows x64 build
-4. Linux x64 build
-5. GitHub Release publication with generated notes
+3. GitHub Release publication with generated notes
 
 ### Manual
 
@@ -71,3 +69,4 @@ Run the **Release** workflow from GitHub Actions and provide:
 - Local builds without signing secrets still work, but they are **not notarized**.
 - The release workflow intentionally fails early when macOS signing/notarization secrets are missing.
 - `build/entitlements.mac*.plist` enables hardened runtime compatibility for Electron/native modules.
+- The current release workflow focuses on **notarized macOS distribution first**. Windows/Linux release jobs can be reintroduced after the notarized macOS path is stable.

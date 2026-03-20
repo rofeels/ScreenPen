@@ -167,99 +167,11 @@ jobs:
           path: release/ScreenCraft-arm64.dmg
           if-no-files-found: error
 
-  build-windows-x64:
-    name: Windows x64
-    runs-on: windows-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build renderer and main bundles
-        shell: pwsh
-        run: |
-          npm run build:windows-capture
-          npm run build:cursor-monitor
-          npx tsc
-          npx vite build
-
-      - name: Build Windows x64 artifact
-        shell: pwsh
-        run: |
-          npx electron-builder --win nsis --x64 --publish never
-          $exe = Get-ChildItem release -Filter "*.exe" | Select-Object -First 1
-          Rename-Item -Path $exe.FullName -NewName "ScreenCraft-windows-x64.exe"
-
-      - name: Verify artifact exists
-        shell: pwsh
-        run: Get-ChildItem release/ScreenCraft-windows-x64.exe
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-x64
-          path: release/ScreenCraft-windows-x64.exe
-          if-no-files-found: error
-
-  build-linux-x64:
-    name: Linux x64
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build renderer and main bundles
-        run: |
-          npm run build:platform-native-helpers
-          npx tsc
-          npx vite build
-
-      - name: Build Linux x64 artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx electron-builder --linux AppImage --x64 --publish never
-          APPIMAGE=$(find release -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
-          mv "$APPIMAGE" release/ScreenCraft-linux-x64.AppImage
-
-      - name: Verify artifact exists
-        run: ls -la release/ScreenCraft-linux-x64.AppImage
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-x64
-          path: release/ScreenCraft-linux-x64.AppImage
-          if-no-files-found: error
-
   publish-release:
     name: Publish release
     needs:
       - build-macos-x64
       - build-macos-arm64
-      - build-windows-x64
-      - build-linux-x64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -285,5 +197,3 @@ jobs:
           files: |
             dist-release/ScreenCraft-arm64.dmg
             dist-release/ScreenCraft-x64.dmg
-            dist-release/ScreenCraft-windows-x64.exe
-            dist-release/ScreenCraft-linux-x64.AppImage
