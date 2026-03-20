@@ -23,17 +23,21 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-      TAP_REPO: ${{ github.event.inputs.tap_repo || vars.HOMEBREW_TAP_REPO || 'webadderall/homebrew-tap' }}
+      TAP_REPO: ${{ github.event.inputs.tap_repo || vars.HOMEBREW_TAP_REPO || 'NewTurn2017/homebrew-tap' }}
       AUTO_MERGE_TAP_PR: ${{ vars.HOMEBREW_TAP_AUTO_MERGE || 'true' }}
     steps:
       - name: Validate token
+        id: token
         run: |
           if [ -z "${GH_TOKEN}" ]; then
-            echo "HOMEBREW_TAP_TOKEN secret is not set."
-            exit 1
+            echo "HOMEBREW_TAP_TOKEN secret is not set. Skipping tap update."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: Resolve release tag
+        if: steps.token.outputs.available == 'true'
         id: tag
         shell: bash
         run: |
@@ -53,31 +57,35 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download release artifacts
+        if: steps.token.outputs.available == 'true'
         shell: bash
         run: |
-          mkdir -p /tmp/recordly-release
+          mkdir -p /tmp/screencraft-release
           gh release download "${{ steps.tag.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --dir /tmp/recordly-release \
-            --pattern "Recordly-arm64.dmg" \
-            --pattern "Recordly-x64.dmg"
+            --dir /tmp/screencraft-release \
+            --pattern "ScreenCraft-arm64.dmg" \
+            --pattern "ScreenCraft-x64.dmg"
 
       - name: Compute checksums
+        if: steps.token.outputs.available == 'true'
         id: sha
         shell: bash
         run: |
-          SHA_ARM=$(sha256sum /tmp/recordly-release/Recordly-arm64.dmg | awk '{print $1}')
-          SHA_INTEL=$(sha256sum /tmp/recordly-release/Recordly-x64.dmg | awk '{print $1}')
+          SHA_ARM=$(sha256sum /tmp/screencraft-release/ScreenCraft-arm64.dmg | awk '{print $1}')
+          SHA_INTEL=$(sha256sum /tmp/screencraft-release/ScreenCraft-x64.dmg | awk '{print $1}')
           echo "arm=$SHA_ARM" >> "$GITHUB_OUTPUT"
           echo "intel=$SHA_INTEL" >> "$GITHUB_OUTPUT"
 
       - name: Clone tap repository
+        if: steps.token.outputs.available == 'true'
         shell: bash
         run: |
           gh repo clone "$TAP_REPO" /tmp/homebrew-tap
           git -C /tmp/homebrew-tap remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${TAP_REPO}.git"
 
       - name: Update cask file
+        if: steps.token.outputs.available == 'true'
         id: update
         shell: bash
         run: |
@@ -85,36 +93,36 @@ jobs:
           cd /tmp/homebrew-tap
           mkdir -p Casks
 
-          BRANCH="recordly-cask-${{ steps.tag.outputs.tag }}"
+          BRANCH="screencraft-cask-${{ steps.tag.outputs.tag }}"
           git checkout -B "$BRANCH"
 
-          cat > Casks/recordly.rb <<'RUBY'
-          cask "recordly" do
+          cat > Casks/screencraft.rb <<'RUBY'
+          cask "screencraft" do
             version "__VERSION__"
 
             on_arm do
               sha256 "__SHA_ARM__"
-              url "https://github.com/__REPO__/releases/download/__TAG__/Recordly-arm64.dmg"
+              url "https://github.com/__REPO__/releases/download/__TAG__/ScreenCraft-arm64.dmg"
             end
 
             on_intel do
               sha256 "__SHA_INTEL__"
-              url "https://github.com/__REPO__/releases/download/__TAG__/Recordly-x64.dmg"
+              url "https://github.com/__REPO__/releases/download/__TAG__/ScreenCraft-x64.dmg"
             end
 
-            name "Recordly"
-            desc "Open-source screen recorder and editor"
-            homepage "https://www.recordly.dev"
+            name "ScreenCraft"
+            desc "Creator-focused desktop screen recorder and editor"
+            homepage "https://github.com/__REPO__"
 
-            app "Recordly.app"
+            app "ScreenCraft.app"
           end
           RUBY
 
-          sed -i "s/__VERSION__/${{ steps.tag.outputs.version }}/g" Casks/recordly.rb
-          sed -i "s/__SHA_ARM__/${{ steps.sha.outputs.arm }}/g" Casks/recordly.rb
-          sed -i "s/__SHA_INTEL__/${{ steps.sha.outputs.intel }}/g" Casks/recordly.rb
-          sed -i "s#__REPO__#${{ github.repository }}#g" Casks/recordly.rb
-          sed -i "s#__TAG__#${{ steps.tag.outputs.tag }}#g" Casks/recordly.rb
+          sed -i "s/__VERSION__/${{ steps.tag.outputs.version }}/g" Casks/screencraft.rb
+          sed -i "s/__SHA_ARM__/${{ steps.sha.outputs.arm }}/g" Casks/screencraft.rb
+          sed -i "s/__SHA_INTEL__/${{ steps.sha.outputs.intel }}/g" Casks/screencraft.rb
+          sed -i "s#__REPO__#${{ github.repository }}#g" Casks/screencraft.rb
+          sed -i "s#__TAG__#${{ steps.tag.outputs.tag }}#g" Casks/screencraft.rb
 
           if git diff --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -123,15 +131,15 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Casks/recordly.rb
-          git commit -m "chore(cask): update recordly to ${{ steps.tag.outputs.tag }}"
+          git add Casks/screencraft.rb
+          git commit -m "chore(cask): update screencraft to ${{ steps.tag.outputs.tag }}"
           git push --force-with-lease origin "$BRANCH"
 
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request in tap repo
-        if: steps.update.outputs.changed == 'true'
+        if: steps.token.outputs.available == 'true' && steps.update.outputs.changed == 'true'
         id: pr
         shell: bash
         run: |
@@ -145,7 +153,7 @@ jobs:
           fi
 
           PR_URL=$(gh pr create \
-            --title "chore(cask): update recordly to ${{ steps.tag.outputs.tag }}" \
+            --title "chore(cask): update screencraft to ${{ steps.tag.outputs.tag }}" \
             --body "Automated cask update for ${{ steps.tag.outputs.tag }}.\n\n- arm64 sha256: \\`${{ steps.sha.outputs.arm }}\\`\n- x64 sha256: \\`${{ steps.sha.outputs.intel }}\\`" \
             --head "${{ steps.update.outputs.branch }}" \
             --base main)
@@ -154,7 +162,7 @@ jobs:
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Auto-merge tap PR
-        if: steps.update.outputs.changed == 'true' && env.AUTO_MERGE_TAP_PR == 'true'
+        if: steps.token.outputs.available == 'true' && steps.update.outputs.changed == 'true' && env.AUTO_MERGE_TAP_PR == 'true'
         shell: bash
         run: |
           cd /tmp/homebrew-tap

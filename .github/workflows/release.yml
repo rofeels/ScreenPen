@@ -1,39 +1,88 @@
-name: Release Builds
+name: Release
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Release tag to create or update
+        description: "Release tag (for example v1.2.1)"
         required: true
         type: string
       release_name:
-        description: Release title
-        required: true
-        type: string
-      release_notes:
-        description: Optional release notes
+        description: "Optional release title"
         required: false
         type: string
-      make_latest:
-        description: Mark this release as the latest release
+      draft:
+        description: "Create as draft release"
         required: true
         default: true
+        type: boolean
+      prerelease:
+        description: "Mark as prerelease"
+        required: true
+        default: false
         type: boolean
 
 permissions:
   contents: write
 
-jobs:
-  build-macos-x64:
-    name: Build macOS x64
-    runs-on: macos-15-intel
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+  RELEASE_NAME: ${{ github.event_name == 'workflow_dispatch' && (inputs.release_name || inputs.tag_name) || github.ref_name }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+jobs:
+  verify-release-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate notarization/signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          HAS_CERT=false
+          if [ -n "${{ secrets.CSC_LINK }}" ] && [ -n "${{ secrets.CSC_KEY_PASSWORD }}" ]; then
+            HAS_CERT=true
+          fi
+
+          HAS_NOTARY=false
+          if [ -n "${{ secrets.APPLE_API_KEY }}" ] && [ -n "${{ secrets.APPLE_API_KEY_ID }}" ] && [ -n "${{ secrets.APPLE_API_ISSUER }}" ]; then
+            HAS_NOTARY=true
+          fi
+
+          if [ -n "${{ secrets.APPLE_ID }}" ] && [ -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" ] && [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+            HAS_NOTARY=true
+          fi
+
+          if [ "$HAS_CERT" != "true" ]; then
+            echo "Missing CSC_LINK / CSC_KEY_PASSWORD signing secrets."
+            exit 1
+          fi
+
+          if [ "$HAS_NOTARY" != "true" ]; then
+            echo "Missing notarization secrets. Provide either APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER or APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID."
+            exit 1
+          fi
+
+  build-macos-x64:
+    name: macOS x64
+    needs: verify-release-inputs
+    runs-on: macos-15-intel
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -41,35 +90,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build native macOS helpers
-        run: npm run build:native-helpers
-
-      - name: Build macOS x64
+      - name: Build renderer and main bundles
         run: |
+          npm run build:native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --mac dmg --x64 --publish never
-          mv release/Recordly.dmg release/Recordly-x64.dmg
 
-      - name: Upload macOS x64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Build notarized macOS x64 artifact
+        run: npx electron-builder --mac dmg --x64 --publish never
+
+      - name: Verify artifact exists
+        run: ls -la release/ScreenCraft-x64.dmg
+
+      - uses: actions/upload-artifact@v4
         with:
           name: macos-x64
-          path: release/Recordly-x64.dmg
+          path: release/ScreenCraft-x64.dmg
           if-no-files-found: error
 
   build-macos-arm64:
-    name: Build macOS arm64
+    name: macOS arm64
+    needs: verify-release-inputs
     runs-on: macos-14
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -77,35 +133,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build native macOS helpers
-        run: npm run build:native-helpers
-
-      - name: Build macOS arm64
+      - name: Build renderer and main bundles
         run: |
+          npm run build:native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --mac dmg --arm64 --publish never
-          mv release/Recordly.dmg release/Recordly-arm64.dmg
 
-      - name: Upload macOS arm64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Build notarized macOS arm64 artifact
+        run: npx electron-builder --mac dmg --arm64 --publish never
+
+      - name: Verify artifact exists
+        run: ls -la release/ScreenCraft-arm64.dmg
+
+      - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64
-          path: release/Recordly-arm64.dmg
+          path: release/ScreenCraft-arm64.dmg
           if-no-files-found: error
 
   build-windows-x64:
-    name: Build Windows x64
+    name: Windows x64
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -113,34 +167,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build Windows x64
+      - name: Build renderer and main bundles
         shell: pwsh
         run: |
+          npm run build:windows-capture
           npm run build:cursor-monitor
           npx tsc
           npx vite build
-          npx electron-builder --win nsis --x64 --publish never
-          Rename-Item -Path release/Recordly.exe -NewName Recordly-windows-x64.exe
 
-      - name: Upload Windows x64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Build Windows x64 artifact
+        shell: pwsh
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Verify artifact exists
+        shell: pwsh
+        run: Get-ChildItem release/ScreenCraft-windows-x64.exe
+
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: release/Recordly-windows-x64.exe
+          path: release/ScreenCraft-windows-x64.exe
           if-no-files-found: error
 
   build-linux-x64:
-    name: Build Linux x64
+    name: Linux x64
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -148,21 +205,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install app dependencies
-        run: npx electron-builder install-app-deps
-
-      - name: Build Linux x64
+      - name: Build renderer and main bundles
         run: |
+          npm run build:platform-native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --linux AppImage --x64 --publish never
-          mv release/Recordly.AppImage release/Recordly-linux-x64.AppImage
 
-      - name: Upload Linux x64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Build Linux x64 artifact
+        run: npx electron-builder --linux AppImage --x64 --publish never
+
+      - name: Verify artifact exists
+        run: ls -la release/ScreenCraft-linux-x64.AppImage
+
+      - uses: actions/upload-artifact@v4
         with:
           name: linux-x64
-          path: release/Recordly-linux-x64.AppImage
+          path: release/ScreenCraft-linux-x64.AppImage
           if-no-files-found: error
 
   publish-release:
@@ -174,42 +232,28 @@ jobs:
       - build-linux-x64
     runs-on: ubuntu-latest
     steps:
-      - name: Download macOS x64 artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: macos-x64
           path: release-assets
 
-      - name: Download macOS arm64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-arm64
-          path: release-assets
+      - name: Flatten release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist-release
+          find release-assets -type f -maxdepth 2 -exec cp {} dist-release/ \;
+          ls -la dist-release
 
-      - name: Download Windows x64 artifact
-        uses: actions/download-artifact@v4
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-x64
-          path: release-assets
-
-      - name: Download Linux x64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-x64
-          path: release-assets
-
-      - name: Create or update release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ github.event.inputs.tag_name }}
-          name: ${{ github.event.inputs.release_name }}
-          body: ${{ github.event.inputs.release_notes }}
-          makeLatest: ${{ github.event.inputs.make_latest }}
-          allowUpdates: true
-          replacesArtifacts: true
-          artifactErrorsFailBuild: true
-          artifacts: |
-            release-assets/Recordly-arm64.dmg
-            release-assets/Recordly-x64.dmg
-            release-assets/Recordly-windows-x64.exe
-            release-assets/Recordly-linux-x64.AppImage
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          generate_release_notes: true
+          files: |
+            dist-release/ScreenCraft-arm64.dmg
+            dist-release/ScreenCraft-x64.dmg
+            dist-release/ScreenCraft-windows-x64.exe
+            dist-release/ScreenCraft-linux-x64.AppImage
