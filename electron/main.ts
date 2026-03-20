@@ -236,6 +236,15 @@ function setupApplicationMenu(mode: "hud" | "full" = currentApplicationMenuMode)
 					accelerator: "CmdOrCtrl+,",
 					click: () => openSettingsWindow(),
 				},
+				...(mode === "hud"
+					? [
+							{ type: "separator" as const },
+							{
+								label: "Show HUD",
+								click: () => focusOrCreateMainWindow(),
+							},
+						]
+					: []),
 				{ type: "separator" },
 				{ role: "services" },
 				{ type: "separator" },
@@ -246,6 +255,12 @@ function setupApplicationMenu(mode: "hud" | "full" = currentApplicationMenuMode)
 				{ role: "quit" },
 			],
 		});
+	}
+
+	if (mode === "hud") {
+		const menu = Menu.buildFromTemplate(template);
+		Menu.setApplicationMenu(menu);
+		return;
 	}
 
 	if (mode === "full") {
@@ -322,11 +337,6 @@ function setupApplicationMenu(mode: "hud" | "full" = currentApplicationMenuMode)
 	// Work around electron/electron#50389:
 	// opening the macOS Window menu currently logs
 	// "representedObject is not a WeakPtrToElectronMenuModelAsNSObject".
-	if (mode === "hud") {
-		Menu.setApplicationMenu(null);
-		return;
-	}
-
 	const menu = Menu.buildFromTemplate(template);
 	Menu.setApplicationMenu(menu);
 }

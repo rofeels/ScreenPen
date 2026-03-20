@@ -79,15 +79,19 @@ function getScreen() {
 	return nodeRequire("electron").screen as typeof import("electron").screen;
 }
 
+function getHudTargetDisplay() {
+	const screen = getScreen();
+	const cursorPoint = screen.getCursorScreenPoint();
+	return screen.getDisplayNearestPoint(cursorPoint);
+}
+
 function getHudOverlayBounds(expanded: boolean) {
-	const primaryDisplay = getScreen().getPrimaryDisplay();
-	const { bounds, workArea } = primaryDisplay;
+	const { workArea } = getHudTargetDisplay();
 	const windowWidth = HUD_WINDOW_WIDTH;
 	const windowHeight = expanded ? HUD_EXPANDED_HEIGHT : HUD_COMPACT_HEIGHT;
 	const bottomClearanceDip = Math.round((HUD_BOTTOM_CLEARANCE_CM / CM_PER_INCH) * DIP_PER_INCH);
-	const screenBottom = bounds.y + bounds.height;
 	const workAreaBottom = workArea.y + workArea.height;
-	const preferredBottom = screenBottom - bottomClearanceDip;
+	const preferredBottom = workAreaBottom - bottomClearanceDip;
 	const maximumSafeBottom = workAreaBottom - HUD_EDGE_MARGIN_DIP;
 	const windowBottom = Math.min(preferredBottom, maximumSafeBottom);
 
@@ -186,6 +190,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 	if (isHudOverlayCaptureProtectionSupported()) {
 		win.setContentProtection(hudOverlayHiddenFromCapture);
 	}
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
 	win.webContents.on("did-finish-load", () => {
 		win?.webContents.send("main-process-message", new Date().toLocaleString());
