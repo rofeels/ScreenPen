@@ -1,0 +1,87 @@
+name: Release Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Existing release tag to attach the Windows installer to (for example v1.2.1)"
+        required: true
+        type: string
+      release_name:
+        description: "Optional release title"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ inputs.tag_name }}
+  RELEASE_NAME: ${{ inputs.release_name || inputs.tag_name }}
+
+jobs:
+  build-windows-x64:
+    name: Windows x64
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        shell: pwsh
+        run: npm ci --ignore-scripts
+
+      - name: Install app dependencies
+        shell: pwsh
+        run: npx electron-builder install-app-deps
+
+      - name: Build renderer and Windows native helpers
+        shell: pwsh
+        run: |
+          npm run build:windows-capture
+          npm run build:cursor-monitor
+          npx tsc
+          npx vite build
+
+      - name: Build Windows x64 artifact
+        shell: pwsh
+        run: |
+          npx electron-builder --win nsis --x64 --publish never
+          Get-ChildItem release
+
+      - name: Verify artifact exists
+        shell: pwsh
+        run: Get-ChildItem release/ScreenCraft-windows-x64.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: release/ScreenCraft-windows-x64.exe
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish Windows asset
+    needs: build-windows-x64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: release-assets
+
+      - name: Upload Windows installer to existing release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          append_body: true
+          files: |
+            release-assets/ScreenCraft-windows-x64.exe
