@@ -72,6 +72,7 @@ let tray: Tray | null = null;
 let selectedSourceName = "";
 let editorHasUnsavedChanges = false;
 let isForceClosing = false;
+let currentApplicationMenuMode: "hud" | "full" = "hud";
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
@@ -98,7 +99,16 @@ ipcMain.on("set-has-unsaved-changes", (_event, hasChanges: boolean) => {
 
 function createWindow() {
 	ensureDockVisible();
+	setApplicationMenuMode("hud");
 	mainWindow = createHudOverlayWindow();
+}
+
+function scheduleInitialHudRecovery() {
+	setTimeout(() => {
+		if (BrowserWindow.getAllWindows().length === 0 && (!mainWindow || mainWindow.isDestroyed())) {
+			createWindow();
+		}
+	}, 800);
 }
 
 function ensureDockVisible() {
@@ -152,6 +162,18 @@ function getEditorWindow() {
 	return null;
 }
 
+function refreshApplicationMenuMode() {
+	if (
+		(settingsWindow && !settingsWindow.isDestroyed()) ||
+		(mainWindow && !mainWindow.isDestroyed() && isEditorWindow(mainWindow))
+	) {
+		setApplicationMenuMode("full");
+		return;
+	}
+
+	setApplicationMenuMode("hud");
+}
+
 function sendEditorMenuAction(
 	channel: "menu-load-project" | "menu-save-project" | "menu-save-project-as",
 ) {
@@ -177,6 +199,7 @@ function sendEditorMenuAction(
 }
 
 function openSettingsWindow() {
+	setApplicationMenuMode("full");
 	if (settingsWindow && !settingsWindow.isDestroyed()) {
 		settingsWindow.show();
 		if (settingsWindow.isMinimized()) settingsWindow.restore();
@@ -188,7 +211,17 @@ function openSettingsWindow() {
 	createSettingsWindowWrapper();
 }
 
-function setupApplicationMenu() {
+function setApplicationMenuMode(mode: "hud" | "full") {
+	if (currentApplicationMenuMode === mode) {
+		return;
+	}
+
+	currentApplicationMenuMode = mode;
+	setupApplicationMenu(mode);
+}
+
+function setupApplicationMenu(mode: "hud" | "full" = currentApplicationMenuMode) {
+	currentApplicationMenuMode = mode;
 	const isMac = process.platform === "darwin";
 	const template: Electron.MenuItemConstructorOptions[] = [];
 
@@ -215,78 +248,85 @@ function setupApplicationMenu() {
 		});
 	}
 
-	template.push(
-		{
-			label: "File",
-			submenu: [
-				{
-					label: "Load Project…",
-					accelerator: "CmdOrCtrl+O",
-					click: () => sendEditorMenuAction("menu-load-project"),
-				},
-				{
-					label: "Save Project…",
-					accelerator: "CmdOrCtrl+S",
-					click: () => sendEditorMenuAction("menu-save-project"),
-				},
-				{
-					label: "Save Project As…",
-					accelerator: "CmdOrCtrl+Shift+S",
-					click: () => sendEditorMenuAction("menu-save-project-as"),
-				},
-				...(isMac
-					? []
-					: [
-							{ type: "separator" as const },
-							{
-								label: "Settings…",
-								accelerator: "CmdOrCtrl+,",
-								click: () => openSettingsWindow(),
-							},
-							{ type: "separator" as const },
-							{ role: "quit" as const },
-						]),
-			],
-		},
-		{
-			label: "Edit",
-			submenu: [
-				{ role: "undo" },
-				{ role: "redo" },
-				{ type: "separator" },
-				{ role: "cut" },
-				{ role: "copy" },
-				{ role: "paste" },
-				{ role: "selectAll" },
-			],
-		},
-		{
-			label: "View",
-			submenu: [
-				{ role: "reload" },
-				{ role: "forceReload" },
-				{ role: "toggleDevTools" },
-				{ type: "separator" },
-				{ role: "resetZoom" },
-				{ role: "zoomIn" },
-				{ role: "zoomOut" },
-				{ type: "separator" },
-				{ role: "togglefullscreen" },
-			],
-		},
-		...(isMac
-			? []
-			: [
+	if (mode === "full") {
+		template.push(
+			{
+				label: "File",
+				submenu: [
 					{
-						label: "Window",
-						submenu: [{ role: "minimize" as const }, { role: "close" as const }],
+						label: "Load Project…",
+						accelerator: "CmdOrCtrl+O",
+						click: () => sendEditorMenuAction("menu-load-project"),
 					},
-				]),
-	);
+					{
+						label: "Save Project…",
+						accelerator: "CmdOrCtrl+S",
+						click: () => sendEditorMenuAction("menu-save-project"),
+					},
+					{
+						label: "Save Project As…",
+						accelerator: "CmdOrCtrl+Shift+S",
+						click: () => sendEditorMenuAction("menu-save-project-as"),
+					},
+					...(isMac
+						? []
+						: [
+								{ type: "separator" as const },
+								{
+									label: "Settings…",
+									accelerator: "CmdOrCtrl+,",
+									click: () => openSettingsWindow(),
+								},
+								{ type: "separator" as const },
+								{ role: "quit" as const },
+							]),
+				],
+			},
+			{
+				label: "Edit",
+				submenu: [
+					{ role: "undo" },
+					{ role: "redo" },
+					{ type: "separator" },
+					{ role: "cut" },
+					{ role: "copy" },
+					{ role: "paste" },
+					{ role: "selectAll" },
+				],
+			},
+			{
+				label: "View",
+				submenu: [
+					{ role: "reload" },
+					{ role: "forceReload" },
+					{ role: "toggleDevTools" },
+					{ type: "separator" },
+					{ role: "resetZoom" },
+					{ role: "zoomIn" },
+					{ role: "zoomOut" },
+					{ type: "separator" },
+					{ role: "togglefullscreen" },
+				],
+			},
+			...(isMac
+				? []
+				: [
+						{
+							label: "Window",
+							submenu: [{ role: "minimize" as const }, { role: "close" as const }],
+						},
+					]),
+		);
+	}
 
 	// Work around electron/electron#50389:
 	// opening the macOS Window menu currently logs
 	// "representedObject is not a WeakPtrToElectronMenuModelAsNSObject".
+	if (mode === "hud") {
+		Menu.setApplicationMenu(null);
+		return;
+	}
+
 	const menu = Menu.buildFromTemplate(template);
 	Menu.setApplicationMenu(menu);
 }
@@ -374,6 +414,7 @@ function updateTrayMenu(recording: boolean = false) {
 
 function createEditorWindowWrapper() {
 	ensureDockVisible();
+	setApplicationMenuMode("full");
 	if (mainWindow) {
 		closeEditorWindowBypassingUnsavedPrompt(mainWindow);
 		mainWindow = null;
@@ -387,6 +428,7 @@ function createEditorWindowWrapper() {
 		}
 		isForceClosing = false;
 		editorHasUnsavedChanges = false;
+		refreshApplicationMenuMode();
 	});
 
 	mainWindow.on("close", (event) => {
@@ -419,6 +461,7 @@ function createEditorWindowWrapper() {
 
 function createSourceSelectorWindowWrapper() {
 	ensureDockVisible();
+	setApplicationMenuMode("hud");
 	sourceSelectorWindow = createSourceSelectorWindow();
 	sourceSelectorWindow.on("closed", () => {
 		sourceSelectorWindow = null;
@@ -428,9 +471,11 @@ function createSourceSelectorWindowWrapper() {
 
 function createSettingsWindowWrapper() {
 	ensureDockVisible();
+	setApplicationMenuMode("full");
 	settingsWindow = createSettingsWindow();
 	settingsWindow.on("closed", () => {
 		settingsWindow = null;
+		refreshApplicationMenuMode();
 	});
 	return settingsWindow;
 }
@@ -486,6 +531,7 @@ app.whenReady().then(async () => {
 	createTray();
 	updateTrayMenu();
 	setupApplicationMenu();
+	setApplicationMenuMode("hud");
 	// Ensure recordings directory exists
 	await ensureRecordingsDir();
 
@@ -531,4 +577,5 @@ app.whenReady().then(async () => {
 	});
 
 	createWindow();
+	scheduleInitialHudRecovery();
 });
