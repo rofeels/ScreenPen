@@ -35,3 +35,9 @@ release/**
 # Native capture build artifacts
 electron/native/wgc-capture/build/
 electron/native/cursor-monitor/build/
+# Signing / notarization materials
+*.p12
+*.cer
+*.csr
+*.mobileprovision
+*.keychain-db
