@@ -181,17 +181,55 @@ export function SettingsWindow() {
 		}
 	}, [platform]);
 
-	useEffect(() => {
-		void loadBaseSettings();
-	}, [loadBaseSettings]);
+	const refreshPermissionsAndSettings = useCallback(async () => {
+		await loadBaseSettings();
+		if (platform === "darwin") {
+			await loadPermissions();
+		}
+	}, [loadBaseSettings, loadPermissions, platform]);
 
 	useEffect(() => {
-		if (!platform) {
+		void refreshPermissionsAndSettings();
+	}, [refreshPermissionsAndSettings]);
+
+	useEffect(() => {
+		if (!showPermissions) {
 			return;
 		}
 
-		void loadPermissions();
-	}, [loadPermissions, platform]);
+		const handleWindowFocus = () => {
+			void refreshPermissionsAndSettings();
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				void refreshPermissionsAndSettings();
+			}
+		};
+
+		window.addEventListener("focus", handleWindowFocus);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+
+		return () => {
+			window.removeEventListener("focus", handleWindowFocus);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, [refreshPermissionsAndSettings, showPermissions]);
+
+	const schedulePermissionResync = useCallback(() => {
+		let attempts = 0;
+		const maxAttempts = 12;
+
+		const tick = () => {
+			attempts += 1;
+			void refreshPermissionsAndSettings();
+			if (attempts < maxAttempts) {
+				window.setTimeout(tick, 1000);
+			}
+		};
+
+		window.setTimeout(tick, 350);
+	}, [refreshPermissionsAndSettings]);
 
 	const handleCountdownChange = useCallback(
 		async (delay: number) => {
@@ -505,7 +543,7 @@ export function SettingsWindow() {
 										variant="ghost"
 										size="sm"
 										className="text-slate-300 hover:bg-white/10 hover:text-white"
-										onClick={() => void loadPermissions()}
+										onClick={() => void refreshPermissionsAndSettings()}
 									>
 										<RefreshCw className="h-4 w-4" />
 										{tSettings("preferences.refreshPermissions")}
@@ -529,7 +567,10 @@ export function SettingsWindow() {
 											type="button"
 											variant="ghost"
 											className="mt-4 px-0 text-slate-300 hover:bg-transparent hover:text-white"
-											onClick={() => void window.electronAPI.openScreenRecordingPreferences()}
+											onClick={async () => {
+												await window.electronAPI.openScreenRecordingPreferences();
+												schedulePermissionResync();
+											}}
 										>
 											{tSettings("preferences.openSystemSettings")}
 										</Button>
@@ -551,7 +592,10 @@ export function SettingsWindow() {
 											type="button"
 											variant="ghost"
 											className="mt-4 px-0 text-slate-300 hover:bg-transparent hover:text-white"
-											onClick={() => void window.electronAPI.openAccessibilityPreferences()}
+											onClick={async () => {
+												await window.electronAPI.openAccessibilityPreferences();
+												schedulePermissionResync();
+											}}
 										>
 											{tSettings("preferences.openSystemSettings")}
 										</Button>
