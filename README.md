@@ -8,17 +8,6 @@ It is a **public fork** of the original [webadderall/Recordly](https://github.co
 
 ![ScreenCraft demo](./recordlydemo.gif)
 
-## Why ScreenCraft?
-
-ScreenCraft keeps the fast recording workflow of the original project while focusing on a cleaner creator workflow:
-
-- screen recording with macOS and Windows capture paths
-- automatic zoom regions and cursor motion polish
-- webcam overlay support
-- timeline-based editing
-- export to MP4 and GIF
-- project save/load support (`.screencraft`, with legacy `.recordly` / `.openscreen` loading support)
-
 ## Download / Build
 
 ### macOS local build
@@ -37,6 +26,17 @@ For local install:
 ```bash
 cp -R release/mac-arm64/ScreenCraft.app /Applications/ScreenCraft.app
 ```
+
+## Why ScreenCraft?
+
+ScreenCraft keeps the fast recording workflow of the original project while focusing on a cleaner creator workflow:
+
+- screen recording with macOS and Windows capture paths
+- automatic zoom regions and cursor motion polish
+- webcam overlay support
+- timeline-based editing
+- export to MP4 and GIF
+- project save/load support (`.screencraft`, with legacy `.recordly` / `.openscreen` loading support)
 
 ## Development
 
