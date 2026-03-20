@@ -76,6 +76,51 @@
 			"medium": "720p",
 			"large": "1080p",
 			"original": "Original"
+		},
+		"changeRecordingsFolder": "Change recordings folder",
+		"recordingsFolder": "Recordings folder",
+		"recordingsFolderUpdated": "Recordings folder updated",
+		"resetSettings": "Reset settings",
+		"resetSettingsDone": "Settings reset to defaults"
+	},
+	"preferences": {
+		"title": "Settings",
+		"subtitle": "Manage app-wide preferences for recording, editor shortcuts, and privacy-related behavior.",
+		"savedAutomatically": "Changes save automatically unless a dialog says otherwise.",
+		"sections": {
+			"general": "General",
+			"recordings": "Recordings",
+			"hud": "HUD",
+			"shortcuts": "Keyboard shortcuts",
+			"permissions": "Permissions"
+		},
+		"generalDescription": "Choose the default language and recording countdown.",
+		"language": "Language",
+		"languageDescription": "Applies to newly opened windows right away.",
+		"countdownDescription": "Set the delay before ScreenCraft starts capturing.",
+		"recordingsDescription": "Choose where new recordings are stored and open the current folder.",
+		"defaultLocation": "Default",
+		"changeRecordingsFolder": "Change folder",
+		"openRecordingsFolder": "Open folder",
+		"hudDescription": "Control how the floating HUD behaves during capture.",
+		"hideHudFromCapture": "Hide HUD from recordings",
+		"hideHudFromCaptureDescription": "Keep the floating control HUD out of your captured video when supported by the platform.",
+		"shortcutsDescription": "Review your current editor shortcuts or customize them.",
+		"customizeShortcuts": "Customize",
+		"configurableShortcuts": "Configurable",
+		"fixedShortcuts": "Fixed",
+		"permissionsDescription": "ScreenCraft uses macOS privacy permissions for screen capture and cursor tracking.",
+		"screenRecordingPermission": "Screen Recording",
+		"screenRecordingPermissionDescription": "Required to capture your screen contents on macOS.",
+		"accessibilityPermission": "Accessibility",
+		"accessibilityPermissionDescription": "Required for reliable cursor tracking and interaction capture on macOS.",
+		"openSystemSettings": "Open System Settings",
+		"refreshPermissions": "Refresh",
+		"permissionRestartHint": "Some macOS permission changes require quitting and reopening ScreenCraft.",
+		"status": {
+			"granted": "Granted",
+			"notGranted": "Not granted",
+			"unknown": "Unknown"
 		}
 	}
 }

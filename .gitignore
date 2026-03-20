@@ -28,6 +28,9 @@ release/**
 # npx electron-builder --mac --win
 .tmp/
 .history/
+.bkit/
+.omc/
+.omx/
 
 # Native capture build artifacts
 electron/native/wgc-capture/build/

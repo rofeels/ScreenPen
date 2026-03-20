@@ -30,6 +30,7 @@
 		"selectWebcamToEnable": "Selecciona una cámara para activar",
 		"noWebcamsFound": "No se encontraron cámaras",
 		"recordingsFolder": "Carpeta de grabaciones",
+		"settings": "Configuración",
 		"language": "Idioma",
 		"paused": "PAUSADO",
 		"rec": "REC",
@@ -52,10 +53,10 @@
 		"appIconAlt": "Icono de la aplicación"
 	},
 	"permissions": {
-		"screenRecordingNeeded": "Recordly necesita permiso de grabación de pantalla antes de comenzar. Se ha abierto Configuración del sistema. Después de habilitarlo, cierra y vuelve a abrir Recordly.",
-		"screenRecordingMissing": "El permiso de grabación de pantalla aún falta. Se ha abierto Configuración del sistema nuevamente. Habilítalo, luego cierra y vuelve a abrir Recordly antes de grabar.",
-		"accessibilityNeeded": "Recordly también necesita permiso de accesibilidad para el seguimiento del cursor. Se ha abierto Configuración del sistema. Después de habilitarlo, cierra y vuelve a abrir Recordly.",
-		"accessibilityMissing": "El permiso de accesibilidad aún falta. Se ha abierto Configuración del sistema nuevamente. Habilítalo, luego cierra y vuelve a abrir Recordly antes de grabar.",
+		"screenRecordingNeeded": "ScreenCraft necesita permiso de grabación de pantalla antes de comenzar. Se ha abierto Configuración del sistema. Después de habilitarlo, cierra y vuelve a abrir ScreenCraft.",
+		"screenRecordingMissing": "El permiso de grabación de pantalla aún falta. Se ha abierto Configuración del sistema nuevamente. Habilítalo, luego cierra y vuelve a abrir ScreenCraft antes de grabar.",
+		"accessibilityNeeded": "ScreenCraft también necesita permiso de accesibilidad para el seguimiento del cursor. Se ha abierto Configuración del sistema. Después de habilitarlo, cierra y vuelve a abrir ScreenCraft.",
+		"accessibilityMissing": "El permiso de accesibilidad aún falta. Se ha abierto Configuración del sistema nuevamente. Habilítalo, luego cierra y vuelve a abrir ScreenCraft antes de grabar.",
 		"selectSource": "Por favor selecciona una fuente para grabar",
 		"systemAudioUnavailable": "El audio del sistema no está disponible para esta fuente. La grabación continuará sin audio del sistema.",
 		"microphoneDenied": "Se denegó el acceso al micrófono. La grabación continuará sin audio del micrófono.",

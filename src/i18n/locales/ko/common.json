@@ -1,7 +1,7 @@
 {
 	"app": {
-		"name": "Recordly",
-		"editorTitle": "Recordly 편집기",
+		"name": "ScreenCraft",
+		"editorTitle": "ScreenCraft 편집기",
 		"subtitle": "화면 녹화 및 편집",
 		"language": "언어",
 		"loadingVideo": "비디오를 불러오는 중...",

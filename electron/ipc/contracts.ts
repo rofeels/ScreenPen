@@ -6,6 +6,9 @@ export interface ProcessedDesktopSource {
 	display_id: string;
 	thumbnail: string | null;
 	appIcon: string | null;
+	displayOrder?: number;
+	displayLabel?: string;
+	displayResolution?: string;
 	originalName?: string;
 	sourceType?: DesktopSourceType;
 	appName?: string;

@@ -12,6 +12,9 @@ interface DesktopSource {
 	thumbnail: string | null;
 	display_id: string;
 	appIcon: string | null;
+	displayOrder?: number;
+	displayLabel?: string;
+	displayResolution?: string;
 	originalName: string;
 	sourceType: "screen" | "window";
 	appName?: string;
@@ -76,6 +79,9 @@ export function SourceSelector() {
 							thumbnail: source.thumbnail,
 							display_id: source.display_id,
 							appIcon: source.appIcon,
+							displayOrder: source.displayOrder,
+							displayLabel: source.displayLabel,
+							displayResolution: source.displayResolution,
 							originalName: source.name,
 							sourceType: metadata.sourceType,
 							appName: metadata.appName,
@@ -111,6 +117,10 @@ export function SourceSelector() {
 	}, [loading, screenSources.length, windowSources.length]);
 
 	const handleSourceSelect = (source: DesktopSource) => setSelectedSource(source);
+	const handleSourcePreview = (source: DesktopSource) => {
+		if (source.sourceType !== "screen") return;
+		void window.electronAPI.showSourceHighlight?.(source);
+	};
 	const handleShare = async () => {
 		if (selectedSource) await window.electronAPI.selectSource(selectedSource);
 	};
@@ -168,6 +178,7 @@ export function SourceSelector() {
 										className={`${styles.sourceCard} ${selectedSource?.id === source.id ? styles.selected : ""} cursor-pointer h-fit p-2 scale-95`}
 										style={{ margin: 8, width: "90%", maxWidth: 220 }}
 										onClick={() => handleSourceSelect(source)}
+										onMouseEnter={() => handleSourcePreview(source)}
 									>
 										<div className="p-1">
 											<div className="relative mb-1">
@@ -176,6 +187,11 @@ export function SourceSelector() {
 													alt={source.name}
 													className="w-full aspect-video object-cover rounded border border-zinc-800"
 												/>
+												{typeof source.displayOrder === "number" && (
+													<div className="absolute top-1 left-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
+														#{source.displayOrder}
+													</div>
+												)}
 												{selectedSource?.id === source.id && (
 													<div className="absolute -top-1 -right-1">
 														<div className="w-4 h-4 bg-[#2563EB] rounded-full flex items-center justify-center shadow-md">
@@ -184,7 +200,16 @@ export function SourceSelector() {
 													</div>
 												)}
 											</div>
-											<div className={styles.name + " truncate"}>{source.name}</div>
+											<div className={styles.name + " truncate"}>
+												{typeof source.displayOrder === "number"
+													? `#${source.displayOrder} · ${source.displayLabel ?? source.name}`
+													: (source.displayLabel ?? source.name)}
+											</div>
+											{source.displayResolution && (
+												<div className="text-[10px] text-zinc-500 mt-1">
+													{source.displayResolution}
+												</div>
+											)}
 										</div>
 									</Card>
 								))}

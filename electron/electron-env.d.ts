@@ -125,6 +125,7 @@ declare global {
 			}>;
 			openScreenRecordingPreferences: () => Promise<{ success: boolean; error?: string }>;
 			openAccessibilityPreferences: () => Promise<{ success: boolean; error?: string }>;
+			openSettingsWindow: () => Promise<{ success: boolean; error?: string }>;
 			saveExportedVideo: (
 				videoData: ArrayBuffer,
 				fileName: string,
@@ -191,6 +192,7 @@ declare global {
 			}>;
 			getShortcuts: () => Promise<Record<string, unknown> | null>;
 			saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>;
+			onShortcutsUpdated: (callback: (shortcuts: unknown) => void) => () => void;
 			setHasUnsavedChanges: (hasChanges: boolean) => void;
 			onRequestSaveBeforeClose: (callback: () => Promise<void>) => () => void;
 			isNativeWindowsCaptureAvailable: () => Promise<{ available: boolean }>;

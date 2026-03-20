@@ -76,6 +76,51 @@
 			"medium": "720p",
 			"large": "1080p",
 			"original": "原始"
+		},
+		"changeRecordingsFolder": "更改录制文件夹",
+		"recordingsFolder": "录制文件夹",
+		"recordingsFolderUpdated": "录制文件夹已更新",
+		"resetSettings": "重置设置",
+		"resetSettingsDone": "设置已恢复默认值"
+	},
+	"preferences": {
+		"title": "设置",
+		"subtitle": "集中管理录制默认项、编辑器快捷键以及与隐私相关的行为。",
+		"savedAutomatically": "除非对话框另有说明，修改会自动保存。",
+		"sections": {
+			"general": "通用",
+			"recordings": "录制",
+			"hud": "HUD",
+			"shortcuts": "键盘快捷键",
+			"permissions": "权限"
+		},
+		"generalDescription": "设置默认语言和录制前倒计时。",
+		"language": "语言",
+		"languageDescription": "会立即应用到新打开的窗口。",
+		"countdownDescription": "设置 ScreenCraft 开始录制前的等待时间。",
+		"recordingsDescription": "选择新录制内容的保存位置，并打开当前文件夹。",
+		"defaultLocation": "默认",
+		"changeRecordingsFolder": "更改文件夹",
+		"openRecordingsFolder": "打开文件夹",
+		"hudDescription": "控制浮动 HUD 在录制时的行为。",
+		"hideHudFromCapture": "在录制中隐藏 HUD",
+		"hideHudFromCaptureDescription": "当平台支持时，让浮动控制 HUD 不出现在录制视频中。",
+		"shortcutsDescription": "查看当前编辑器快捷键或进行自定义。",
+		"customizeShortcuts": "自定义",
+		"configurableShortcuts": "可配置",
+		"fixedShortcuts": "固定",
+		"permissionsDescription": "ScreenCraft 在 macOS 上依赖隐私权限来录制屏幕和跟踪光标。",
+		"screenRecordingPermission": "屏幕录制",
+		"screenRecordingPermissionDescription": "在 macOS 上录制屏幕内容所必需。",
+		"accessibilityPermission": "辅助功能",
+		"accessibilityPermissionDescription": "在 macOS 上实现可靠的光标跟踪和交互捕获所必需。",
+		"openSystemSettings": "打开系统设置",
+		"refreshPermissions": "刷新",
+		"permissionRestartHint": "某些 macOS 权限变更需要退出并重新打开 ScreenCraft 才会生效。",
+		"status": {
+			"granted": "已授权",
+			"notGranted": "未授权",
+			"unknown": "未知"
 		}
 	}
 }

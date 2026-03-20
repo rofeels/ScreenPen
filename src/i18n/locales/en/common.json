@@ -1,7 +1,7 @@
 {
 	"app": {
-		"name": "Recordly",
-		"editorTitle": "Recordly Editor",
+		"name": "ScreenCraft",
+		"editorTitle": "ScreenCraft Editor",
 		"subtitle": "Screen recording and editing",
 		"language": "Language",
 		"loadingVideo": "Loading video...",

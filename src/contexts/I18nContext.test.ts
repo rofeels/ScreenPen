@@ -22,7 +22,7 @@ describe("normalizeLocale", () => {
 
 describe("translateForLocale", () => {
 	it("supports default common namespace lookups", () => {
-		expect(translateForLocale("en", "app.name")).toBe("Recordly");
+		expect(translateForLocale("en", "app.name")).toBe("ScreenCraft");
 	});
 
 	it("returns Korean translations for registered locale bundles", () => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CountdownOverlay } from "./components/countdown/CountdownOverlay";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
+import { SettingsWindow } from "./components/settings/SettingsWindow";
 import { Toaster } from "./components/ui/sonner";
 import { ShortcutsConfigDialog } from "./components/video-editor/ShortcutsConfigDialog";
 import VideoEditor from "./components/video-editor/VideoEditor";
@@ -11,7 +12,7 @@ import { loadAllCustomFonts } from "./lib/customFonts";
 
 export default function App() {
 	const [windowType, setWindowType] = useState("");
-	const { locale, t } = useI18n();
+	const { t } = useI18n();
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
@@ -37,17 +38,21 @@ export default function App() {
 
 	useEffect(() => {
 		document.title =
-			windowType === "editor" ? t("app.editorTitle", "Recordly Editor") : t("app.name", "Recordly");
-	}, [windowType, locale, t]);
+			windowType === "editor"
+				? t("app.editorTitle", "ScreenCraft Editor")
+				: windowType === "settings"
+					? `${t("app.name", "ScreenCraft")} · ${t("settings.preferences.title", "Settings")}`
+					: t("app.name", "ScreenCraft");
+	}, [windowType, t]);
 
 	switch (windowType) {
 		case "hud-overlay":
-				return (
-					<>
-						<LaunchWindow />
-						<Toaster theme="dark" className="pointer-events-auto" />
-					</>
-				);
+			return (
+				<>
+					<LaunchWindow />
+					<Toaster theme="dark" className="pointer-events-auto" />
+				</>
+			);
 		case "source-selector":
 			return <SourceSelector />;
 		case "countdown":
@@ -59,17 +64,27 @@ export default function App() {
 					<ShortcutsConfigDialog />
 				</ShortcutsProvider>
 			);
+		case "settings":
+			return (
+				<ShortcutsProvider>
+					<SettingsWindow />
+					<ShortcutsConfigDialog />
+					<Toaster theme="dark" />
+				</ShortcutsProvider>
+			);
 		default:
 			return (
 				<div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
 					<div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-5 shadow-2xl shadow-black/30 backdrop-blur-xl">
 						<img
-							src="/app-icons/recordly-128.png"
-							alt={t("app.name", "Recordly")}
+							src="/app-icons/screencraft-128.png"
+							alt={t("app.name", "ScreenCraft")}
 							className="h-12 w-12 rounded-xl"
 						/>
 						<div>
-							<h1 className="text-xl font-semibold tracking-tight">{t("app.name", "Recordly")}</h1>
+							<h1 className="text-xl font-semibold tracking-tight">
+								{t("app.name", "ScreenCraft")}
+							</h1>
 							<p className="text-sm text-white/65">
 								{t("app.subtitle", "Screen recording and editing")}
 							</p>

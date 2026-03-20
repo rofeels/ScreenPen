@@ -204,6 +204,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 		document.documentElement.lang = locale;
 	}, [locale]);
 
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== LOCALE_STORAGE_KEY) {
+				return;
+			}
+
+			setLocaleState(normalizeLocale(event.newValue));
+		};
+
+		window.addEventListener("storage", handleStorage);
+		return () => window.removeEventListener("storage", handleStorage);
+	}, []);
+
 	const t = useCallback(
 		(key: string, fallback?: string, vars?: Record<string, string | number>) => {
 			return translateForLocale(locale, key, fallback, vars);

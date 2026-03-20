@@ -66,6 +66,15 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	customWallpapers: [],
 };
 
+export function getDefaultEditorPreferences(): EditorPreferences {
+	return {
+		...DEFAULT_EDITOR_PREFERENCES,
+		cropRegion: { ...DEFAULT_EDITOR_PREFERENCES.cropRegion },
+		webcam: { ...DEFAULT_EDITOR_PREFERENCES.webcam },
+		customWallpapers: [...DEFAULT_EDITOR_PREFERENCES.customWallpapers],
+	};
+}
+
 function normalizePositiveIntegerString(value: unknown, fallback: string): string {
 	if (typeof value !== "string" || value.trim().length === 0) {
 		return fallback;

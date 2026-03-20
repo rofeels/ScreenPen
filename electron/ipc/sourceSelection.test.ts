@@ -4,6 +4,7 @@ import {
 	buildElectronWindowSources,
 	buildMacWindowSources,
 	buildScreenSources,
+	buildScreenSourcesWithDisplayMetadata,
 	collectOwnWindowNames,
 	normalizeDesktopSourceName,
 } from "./sourceSelection";
@@ -18,8 +19,9 @@ function makeThumbnail(data = "thumb") {
 
 describe("sourceSelection helpers", () => {
 	it("collects and normalizes own window names", () => {
-		const names = collectOwnWindowNames("Recordly", ["  My Window  ", "Another   Window"]);
+		const names = collectOwnWindowNames("ScreenCraft", ["  My Window  ", "Another   Window"]);
 
+		expect(names.has("screencraft")).toBe(true);
 		expect(names.has("recordly")).toBe(true);
 		expect(names.has("my window")).toBe(true);
 		expect(names.has("another window")).toBe(true);
@@ -48,8 +50,41 @@ describe("sourceSelection helpers", () => {
 		]);
 	});
 
+	it("adds readable display metadata for screen sources", () => {
+		const result = buildScreenSourcesWithDisplayMetadata(
+			[
+				{
+					id: "screen:1",
+					name: "Screen 1",
+					display_id: "10",
+					thumbnail: makeThumbnail("screen-thumb"),
+					appIcon: null,
+				},
+				{
+					id: "screen:2",
+					name: "Screen 2",
+					display_id: "11",
+					thumbnail: makeThumbnail("screen-thumb-2"),
+					appIcon: null,
+				},
+			],
+			[
+				{ id: 10, label: "Studio Display", internal: false, bounds: { width: 2560, height: 1440 } },
+				{ id: 11, label: "", internal: true, bounds: { width: 3456, height: 2234 } },
+			],
+			10,
+		);
+
+		expect(result[0]?.displayLabel).toBe("Main · Studio Display · 2560×1440");
+		expect(result[0]?.displayResolution).toBe("2560×1440");
+		expect(result[0]?.displayOrder).toBe(1);
+		expect(result[1]?.displayLabel).toBe("Built-in · 3456×2234");
+		expect(result[1]?.displayResolution).toBe("3456×2234");
+		expect(result[1]?.displayOrder).toBe(2);
+	});
+
 	it("filters own electron windows and supports fallback partial matching", () => {
-		const ownWindowNames = collectOwnWindowNames("Recordly", ["Video Editor"]);
+		const ownWindowNames = collectOwnWindowNames("ScreenCraft", ["Video Editor"]);
 		const electronSources = [
 			{
 				id: "window:1",
@@ -109,16 +144,16 @@ describe("sourceSelection helpers", () => {
 			},
 			{
 				id: "window:11",
-				name: "Recordly Internal",
-				appName: "Recordly",
-				windowTitle: "Recordly Internal",
+				name: "ScreenCraft Internal",
+				appName: "ScreenCraft",
+				windowTitle: "ScreenCraft Internal",
 			},
 		];
 
 		const result = buildMacWindowSources(nativeWindowSources, electronSources, {
 			allowRecordlyWindowCapture: false,
-			ownAppName: "recordly",
-			ownWindowNames: collectOwnWindowNames("Recordly", ["Recordly Internal"]),
+			ownAppName: "screencraft",
+			ownWindowNames: collectOwnWindowNames("ScreenCraft", ["ScreenCraft Internal"]),
 		});
 
 		expect(result).toEqual([

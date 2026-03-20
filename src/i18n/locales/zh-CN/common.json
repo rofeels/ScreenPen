@@ -1,7 +1,7 @@
 {
 	"app": {
-		"name": "Recordly",
-		"editorTitle": "Recordly 编辑器",
+		"name": "ScreenCraft",
+		"editorTitle": "ScreenCraft 编辑器",
 		"subtitle": "屏幕录制与编辑",
 		"language": "语言",
 		"loadingVideo": "正在加载视频...",

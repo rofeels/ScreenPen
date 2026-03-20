@@ -134,6 +134,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openAccessibilityPreferences: () => {
 		return ipcRenderer.invoke("open-accessibility-preferences");
 	},
+	openSettingsWindow: () => {
+		return ipcRenderer.invoke("open-settings-window");
+	},
 	saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("save-exported-video", videoData, fileName);
 	},
@@ -205,6 +208,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	saveShortcuts: (shortcuts: unknown) => {
 		return ipcRenderer.invoke("save-shortcuts", shortcuts);
+	},
+	onShortcutsUpdated: (callback: (shortcuts: unknown) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, shortcuts: unknown) => callback(shortcuts);
+		ipcRenderer.on("shortcuts-updated", listener);
+		return () => ipcRenderer.removeListener("shortcuts-updated", listener);
 	},
 	setHasUnsavedChanges: (hasChanges: boolean) => {
 		ipcRenderer.send("set-has-unsaved-changes", hasChanges);

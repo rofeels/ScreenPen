@@ -76,6 +76,51 @@
 			"medium": "720p",
 			"large": "1080p",
 			"original": "Original"
+		},
+		"changeRecordingsFolder": "Cambiar carpeta de grabaciones",
+		"recordingsFolder": "Carpeta de grabaciones",
+		"recordingsFolderUpdated": "Carpeta de grabaciones actualizada",
+		"resetSettings": "Restablecer ajustes",
+		"resetSettingsDone": "Ajustes restablecidos a los valores predeterminados"
+	},
+	"preferences": {
+		"title": "Configuración",
+		"subtitle": "Administra las preferencias globales de grabación, atajos del editor y comportamiento relacionado con la privacidad.",
+		"savedAutomatically": "Los cambios se guardan automáticamente salvo que un diálogo indique lo contrario.",
+		"sections": {
+			"general": "General",
+			"recordings": "Grabaciones",
+			"hud": "HUD",
+			"shortcuts": "Atajos de teclado",
+			"permissions": "Permisos"
+		},
+		"generalDescription": "Elige el idioma predeterminado y la cuenta regresiva antes de grabar.",
+		"language": "Idioma",
+		"languageDescription": "Se aplica inmediatamente a las ventanas nuevas.",
+		"countdownDescription": "Define la espera antes de que ScreenCraft empiece a capturar.",
+		"recordingsDescription": "Elige dónde se guardan las nuevas grabaciones y abre la carpeta actual.",
+		"defaultLocation": "Predeterminada",
+		"changeRecordingsFolder": "Cambiar carpeta",
+		"openRecordingsFolder": "Abrir carpeta",
+		"hudDescription": "Controla cómo se comporta el HUD flotante durante la captura.",
+		"hideHudFromCapture": "Ocultar HUD en las grabaciones",
+		"hideHudFromCaptureDescription": "Mantén el HUD flotante fuera del video capturado cuando la plataforma lo permita.",
+		"shortcutsDescription": "Revisa tus atajos actuales del editor o personalízalos.",
+		"customizeShortcuts": "Personalizar",
+		"configurableShortcuts": "Configurables",
+		"fixedShortcuts": "Fijos",
+		"permissionsDescription": "ScreenCraft usa permisos de privacidad de macOS para capturar pantalla y seguir el cursor.",
+		"screenRecordingPermission": "Grabación de pantalla",
+		"screenRecordingPermissionDescription": "Necesario para capturar el contenido de tu pantalla en macOS.",
+		"accessibilityPermission": "Accesibilidad",
+		"accessibilityPermissionDescription": "Necesario para un seguimiento fiable del cursor y de las interacciones en macOS.",
+		"openSystemSettings": "Abrir Ajustes del sistema",
+		"refreshPermissions": "Actualizar",
+		"permissionRestartHint": "Algunos cambios de permisos en macOS requieren cerrar y volver a abrir ScreenCraft.",
+		"status": {
+			"granted": "Concedido",
+			"notGranted": "No concedido",
+			"unknown": "Desconocido"
 		}
 	}
 }

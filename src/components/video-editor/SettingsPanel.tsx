@@ -7,6 +7,7 @@ import {
 	FolderOpen,
 	Image,
 	Palette,
+	RotateCcw,
 	Save,
 	Sparkles,
 	Star,
@@ -34,7 +35,11 @@ import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { CropControl } from "./CropControl";
-import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
+import {
+	getDefaultEditorPreferences,
+	loadEditorPreferences,
+	saveEditorPreferences,
+} from "./editorPreferences";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { SliderControl } from "./SliderControl";
 import type {
@@ -266,6 +271,7 @@ export function SettingsPanel({
 	const [customImages, setCustomImages] = useState<string[]>(
 		initialEditorPreferences.customWallpapers,
 	);
+	const [recordingsDirectoryLabel, setRecordingsDirectoryLabel] = useState<string | null>(null);
 	const removeBackgroundStateRef = useRef<{
 		aspectRatio: AspectRatio;
 		padding: number;
@@ -342,6 +348,26 @@ export function SettingsPanel({
 		saveEditorPreferences({ customWallpapers: customImages });
 	}, [customImages]);
 
+	useEffect(() => {
+		let cancelled = false;
+		const loadRecordingsDirectory = async () => {
+			try {
+				const result = await window.electronAPI.getRecordingsDirectory();
+				if (!cancelled && result.success) {
+					setRecordingsDirectoryLabel(result.path);
+				}
+			} catch {
+				if (!cancelled) {
+					setRecordingsDirectoryLabel(null);
+				}
+			}
+		};
+		void loadRecordingsDirectory();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const handleRemoveBackgroundToggle = (checked: boolean) => {
 		if (checked) {
 			removeBackgroundStateRef.current = {
@@ -358,6 +384,53 @@ export function SettingsPanel({
 			onPaddingChange?.(removeBackgroundStateRef.current.padding);
 			removeBackgroundStateRef.current = null;
 		}
+	};
+
+	const handleChooseRecordingsDirectory = async () => {
+		try {
+			const result = await window.electronAPI.chooseRecordingsDirectory();
+			if (!result.canceled && result.success && result.path) {
+				setRecordingsDirectoryLabel(result.path);
+				toast.success(tSettings("export.recordingsFolderUpdated"));
+			}
+		} catch (error) {
+			toast.error(String(error));
+		}
+	};
+
+	const handleResetSettings = () => {
+		const defaults = getDefaultEditorPreferences();
+
+		onWallpaperChange(defaults.wallpaper);
+		onShadowChange?.(defaults.shadowIntensity);
+		onBackgroundBlurChange?.(defaults.backgroundBlur);
+		onZoomMotionBlurChange?.(defaults.zoomMotionBlur);
+		onConnectZoomsChange?.(defaults.connectZooms);
+		onShowCursorChange?.(defaults.showCursor);
+		onLoopCursorChange?.(defaults.loopCursor);
+		onCursorSizeChange?.(defaults.cursorSize);
+		onCursorSmoothingChange?.(defaults.cursorSmoothing);
+		onCursorMotionBlurChange?.(defaults.cursorMotionBlur);
+		onCursorClickBounceChange?.(defaults.cursorClickBounce);
+		onCursorSwayChange?.(defaults.cursorSway);
+		onBorderRadiusChange?.(defaults.borderRadius);
+		onPaddingChange?.(defaults.padding);
+		onCropChange?.(defaults.cropRegion);
+		onWebcamChange?.(defaults.webcam);
+		onAspectRatioChange?.(defaults.aspectRatio);
+		onExportQualityChange?.(defaults.exportQuality);
+		onExportFormatChange?.(defaults.exportFormat);
+		onGifFrameRateChange?.(defaults.gifFrameRate);
+		onGifLoopChange?.(defaults.gifLoop);
+		onGifSizePresetChange?.(defaults.gifSizePreset);
+
+		setCustomImages(defaults.customWallpapers);
+		setBackgroundTab(getBackgroundTabForWallpaper(defaults.wallpaper));
+		setSelectedColor(isHexWallpaper(defaults.wallpaper) ? defaults.wallpaper : "#ADADAD");
+		setGradient(GRADIENTS.includes(defaults.wallpaper) ? defaults.wallpaper : GRADIENTS[0]);
+
+		saveEditorPreferences(defaults);
+		toast.success(tSettings("export.resetSettingsDone"));
 	};
 
 	const webcamFileName = webcam?.sourcePath?.split(/[\\/]/).pop() ?? null;
@@ -1277,6 +1350,34 @@ export function SettingsPanel({
 					</Button>
 				</div>
 
+				<div className="grid grid-cols-2 gap-2 mb-3">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleChooseRecordingsDirectory}
+						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+					>
+						<FolderOpen className="w-3.5 h-3.5" />
+						{tSettings("export.changeRecordingsFolder")}
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleResetSettings}
+						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+					>
+						<RotateCcw className="w-3.5 h-3.5" />
+						{tSettings("export.resetSettings")}
+					</Button>
+				</div>
+
+				{recordingsDirectoryLabel && (
+					<div className="mb-3 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-[10px] text-slate-500">
+						<div className="font-medium text-slate-300">{tSettings("export.recordingsFolder")}</div>
+						<div className="truncate mt-1">{recordingsDirectoryLabel}</div>
+					</div>
+				)}
+
 				<Button
 					type="button"
 					size="lg"
@@ -1294,7 +1395,7 @@ export function SettingsPanel({
 						type="button"
 						onClick={() => {
 							window.electronAPI?.openExternalUrl(
-								"https://github.com/webadderall/Recordly/issues/new/choose",
+								"https://github.com/NewTurn2017/ScreenCraft/issues/new/choose",
 							);
 						}}
 						className="flex-1 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 py-1.5 transition-colors"
@@ -1305,7 +1406,7 @@ export function SettingsPanel({
 					<button
 						type="button"
 						onClick={() => {
-							window.electronAPI?.openExternalUrl("https://github.com/webadderall/Recordly");
+							window.electronAPI?.openExternalUrl("https://github.com/NewTurn2017/ScreenCraft");
 						}}
 						className="flex-1 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 py-1.5 transition-colors"
 					>

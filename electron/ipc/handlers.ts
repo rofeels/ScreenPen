@@ -51,7 +51,7 @@ import { showSourceHighlight } from "./sourceHighlight";
 import {
 	buildElectronWindowSources,
 	buildMacWindowSources,
-	buildScreenSources,
+	buildScreenSourcesWithDisplayMetadata,
 	collectOwnWindowNames,
 	normalizeDesktopSourceName,
 } from "./sourceSelection";
@@ -65,8 +65,8 @@ import {
 const execFileAsync = promisify(execFile);
 const nodeRequire = createRequire(import.meta.url);
 
-const PROJECT_FILE_EXTENSION = "recordly";
-const LEGACY_PROJECT_FILE_EXTENSIONS = ["openscreen"];
+const PROJECT_FILE_EXTENSION = "screencraft";
+const LEGACY_PROJECT_FILE_EXTENSIONS = ["recordly", "openscreen"];
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 const RECORDINGS_SETTINGS_FILE = path.join(app.getPath("userData"), "recordings-settings.json");
 const COUNTDOWN_SETTINGS_FILE = path.join(app.getPath("userData"), "countdown-settings.json");
@@ -1310,6 +1310,8 @@ export function registerIpcHandlers(
 						types: electronTypes,
 					})
 				: [];
+		const displays = getScreen().getAllDisplays();
+		const primaryDisplayId = getScreen().getPrimaryDisplay().id;
 		const ownWindowNames = collectOwnWindowNames(
 			app.getName(),
 			BrowserWindow.getAllWindows().flatMap((win) => {
@@ -1318,7 +1320,11 @@ export function registerIpcHandlers(
 			}),
 		);
 		const ownAppName = normalizeDesktopSourceName(app.getName());
-		const screenSources = buildScreenSources(electronSources);
+		const screenSources = buildScreenSourcesWithDisplayMetadata(
+			electronSources,
+			displays,
+			primaryDisplayId,
+		);
 
 		if (process.platform !== "darwin" || !includeWindows) {
 			const windowSources = buildElectronWindowSources(electronSources, {
@@ -1544,7 +1550,7 @@ export function registerIpcHandlers(
 				) {
 					return {
 						success: false,
-						message: "Cannot record Recordly windows. Please select another app window.",
+						message: "Cannot record ScreenCraft windows. Please select another app window.",
 					};
 				}
 
@@ -2384,10 +2390,13 @@ export function registerIpcHandlers(
 					: `${safeName}.${PROJECT_FILE_EXTENSION}`;
 
 				const result = await dialog.showSaveDialog({
-					title: "Save Recordly Project",
+					title: "Save ScreenCraft Project",
 					defaultPath: path.join(recordingsDir, defaultName),
 					filters: [
-						{ name: "Recordly Project", extensions: [PROJECT_FILE_EXTENSION] },
+						{
+							name: "ScreenCraft Project",
+							extensions: [PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS],
+						},
 						{ name: "JSON", extensions: ["json"] },
 					],
 					properties: ["createDirectory", "showOverwriteConfirmation"],
@@ -2424,11 +2433,11 @@ export function registerIpcHandlers(
 		try {
 			const recordingsDir = await getRecordingsDir();
 			const result = await dialog.showOpenDialog({
-				title: "Open Recordly Project",
+				title: "Open ScreenCraft Project",
 				defaultPath: recordingsDir,
 				filters: [
 					{
-						name: "Recordly Project",
+						name: "ScreenCraft Project",
 						extensions: [PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS],
 					},
 					{ name: "JSON", extensions: ["json"] },
@@ -2612,6 +2621,11 @@ export function registerIpcHandlers(
 	ipcMain.handle("save-shortcuts", async (_, shortcuts: unknown) => {
 		try {
 			await fs.writeFile(SHORTCUTS_FILE, JSON.stringify(shortcuts, null, 2), "utf-8");
+			for (const window of BrowserWindow.getAllWindows()) {
+				if (!window.isDestroyed()) {
+					window.webContents.send("shortcuts-updated", shortcuts);
+				}
+			}
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to save shortcuts:", error);

@@ -13,7 +13,7 @@ const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const WINDOW_ICON_PATH = path.join(
 	process.env.VITE_PUBLIC || RENDERER_DIST,
 	"app-icons",
-	"recordly-512.png",
+	"screencraft-512.png",
 );
 
 let hudOverlayWindow: BrowserWindow | null = null;
@@ -30,6 +30,10 @@ const HUD_SHADOW_BLEED_DIP = 20;
 const HUD_WINDOW_WIDTH = 560;
 const HUD_COMPACT_HEIGHT = 96;
 const HUD_EXPANDED_HEIGHT = 520 + HUD_SHADOW_BLEED_DIP;
+
+function useForcedVisibleWindows(): boolean {
+	return process.env["RECORDLY_FORCE_VISIBLE_WINDOWS"] === "1";
+}
 
 function isHudOverlayCaptureProtectionSupported(): boolean {
 	return process.platform !== "linux";
@@ -88,10 +92,7 @@ function getHudOverlayBounds(expanded: boolean) {
 	const windowBottom = Math.min(preferredBottom, maximumSafeBottom);
 
 	const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
-	const y = Math.max(
-		workArea.y + HUD_EDGE_MARGIN_DIP,
-		Math.floor(windowBottom - windowHeight),
-	);
+	const y = Math.max(workArea.y + HUD_EDGE_MARGIN_DIP, Math.floor(windowBottom - windowHeight));
 
 	return {
 		x,
@@ -154,6 +155,7 @@ ipcMain.handle("set-hud-overlay-capture-protection", (_event, enabled: boolean) 
 export function createHudOverlayWindow(): BrowserWindow {
 	loadHudOverlayCaptureProtectionSetting();
 	const initialBounds = getHudOverlayBounds(false);
+	const forceVisibleWindows = useForcedVisibleWindows();
 
 	const win = new BrowserWindow({
 		width: initialBounds.width,
@@ -164,13 +166,15 @@ export function createHudOverlayWindow(): BrowserWindow {
 		maxHeight: HUD_EXPANDED_HEIGHT,
 		x: initialBounds.x,
 		y: initialBounds.y,
-		frame: false,
-		transparent: true,
+		frame: forceVisibleWindows,
+		transparent: !forceVisibleWindows,
 		resizable: false,
-		alwaysOnTop: true,
-		skipTaskbar: true,
-		hasShadow: false,
+		alwaysOnTop: !forceVisibleWindows,
+		skipTaskbar: !forceVisibleWindows,
+		hasShadow: forceVisibleWindows,
 		show: false,
+		title: "ScreenCraft HUD",
+		backgroundColor: forceVisibleWindows ? "#09090b" : "#00000000",
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,
@@ -230,7 +234,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "Recordly",
+		title: "ScreenCraft",
 		show: false,
 		backgroundColor: "#000000",
 		webPreferences: {
@@ -262,8 +266,63 @@ export function createEditorWindow(): BrowserWindow {
 	return win;
 }
 
+export function createSettingsWindow(): BrowserWindow {
+	const isMac = process.platform === "darwin";
+
+	const win = new BrowserWindow({
+		width: 1040,
+		height: 760,
+		minWidth: 860,
+		minHeight: 620,
+		center: true,
+		maximizable: false,
+		fullscreenable: false,
+		...(process.platform !== "darwin" && {
+			icon: WINDOW_ICON_PATH,
+		}),
+		...(isMac && {
+			titleBarStyle: "hiddenInset",
+			trafficLightPosition: { x: 12, y: 12 },
+		}),
+		transparent: false,
+		resizable: true,
+		alwaysOnTop: false,
+		skipTaskbar: false,
+		title: "ScreenCraft Settings",
+		show: false,
+		backgroundColor: "#09090b",
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			webSecurity: false,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.once("ready-to-show", () => {
+		win.show();
+		win.focus();
+	});
+
+	win.webContents.on("did-finish-load", () => {
+		win?.webContents.send("main-process-message", new Date().toLocaleString());
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=settings");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "settings" },
+		});
+	}
+
+	return win;
+}
+
 export function createSourceSelectorWindow(): BrowserWindow {
 	const { width, height } = getScreen().getPrimaryDisplay().workAreaSize;
+	const forceVisibleWindows = useForcedVisibleWindows();
 
 	const win = new BrowserWindow({
 		width: 620,
@@ -272,15 +331,16 @@ export function createSourceSelectorWindow(): BrowserWindow {
 		maxHeight: 500,
 		x: Math.round((width - 620) / 2),
 		y: Math.round((height - 420) / 2),
-		frame: false,
+		frame: forceVisibleWindows,
 		resizable: false,
-		alwaysOnTop: true,
-		transparent: true,
+		alwaysOnTop: !forceVisibleWindows,
+		transparent: !forceVisibleWindows,
 		show: false,
 		...(process.platform !== "darwin" && {
 			icon: WINDOW_ICON_PATH,
 		}),
-		backgroundColor: "#00000000",
+		title: "ScreenCraft Source Selector",
+		backgroundColor: forceVisibleWindows ? "#09090b" : "#00000000",
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,

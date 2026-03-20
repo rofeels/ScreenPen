@@ -12,6 +12,7 @@ import {
 	MoreVertical,
 	Pause,
 	Play,
+	Settings2,
 	Square,
 	Timer,
 	Video,
@@ -42,6 +43,9 @@ interface DesktopSource {
 	thumbnail: string | null;
 	display_id: string;
 	appIcon: string | null;
+	displayOrder?: number;
+	displayLabel?: string;
+	displayResolution?: string;
 	sourceType?: "screen" | "window";
 	appName?: string;
 	windowTitle?: string;
@@ -74,12 +78,14 @@ function IconButton({
 
 function DropdownItem({
 	onClick,
+	onMouseEnter,
 	selected,
 	icon,
 	children,
 	trailing,
 }: {
 	onClick: () => void;
+	onMouseEnter?: () => void;
 	selected?: boolean;
 	icon: ReactNode;
 	children: ReactNode;
@@ -90,6 +96,7 @@ function DropdownItem({
 			type="button"
 			className={`${styles.ddItem} ${selected ? styles.ddItemSelected : ""}`}
 			onClick={onClick}
+			onMouseEnter={onMouseEnter}
 		>
 			<span className="shrink-0">{icon}</span>
 			<span className="truncate">{children}</span>
@@ -401,6 +408,9 @@ export function LaunchWindow() {
 						thumbnail: s.thumbnail,
 						display_id: s.display_id,
 						appIcon: s.appIcon,
+						displayOrder: s.displayOrder,
+						displayLabel: s.displayLabel,
+						displayResolution: s.displayResolution,
 						sourceType: type,
 						appName,
 						windowTitle: s.windowTitle ?? displayName,
@@ -421,7 +431,7 @@ export function LaunchWindow() {
 
 	const handleSourceSelect = async (source: DesktopSource) => {
 		await window.electronAPI.selectSource(source);
-		setSelectedSource(source.name);
+		setSelectedSource(source.displayLabel ?? source.name);
 		setHasSelectedSource(true);
 		setActiveDropdown("none");
 		window.electronAPI.showSourceHighlight?.({
@@ -429,6 +439,14 @@ export function LaunchWindow() {
 			name: source.appName ? `${source.appName} — ${source.name}` : source.name,
 			appName: source.appName,
 		});
+	};
+
+	const previewSource = (source: DesktopSource) => {
+		if (source.sourceType !== "screen") {
+			return;
+		}
+
+		window.electronAPI.showSourceHighlight?.(source);
 	};
 
 	const openVideoFile = async () => {
@@ -510,10 +528,22 @@ export function LaunchWindow() {
 														<DropdownItem
 															key={source.id}
 															icon={<Monitor size={16} />}
-															selected={selectedSource === source.name}
+															selected={selectedSource === (source.displayLabel ?? source.name)}
 															onClick={() => handleSourceSelect(source)}
+															onMouseEnter={() => previewSource(source)}
 														>
-															{source.name}
+															<div className="flex flex-col">
+																<span>
+																	{typeof source.displayOrder === "number"
+																		? `#${source.displayOrder} · ${source.displayLabel ?? source.name}`
+																		: (source.displayLabel ?? source.name)}
+																</span>
+																{source.displayResolution && (
+																	<span className="text-[10px] text-zinc-500">
+																		{source.displayResolution}
+																	</span>
+																)}
+															</div>
 														</DropdownItem>
 													))}
 												</>
@@ -706,6 +736,15 @@ export function LaunchWindow() {
 										</DropdownItem>
 									)}
 									{supportsHudCaptureProtection && <Separator />}
+									<DropdownItem
+										icon={<Settings2 size={16} />}
+										onClick={() => {
+											setActiveDropdown("none");
+											void window.electronAPI.openSettingsWindow();
+										}}
+									>
+										{t("recording.settings")}
+									</DropdownItem>
 									<DropdownItem icon={<FolderOpen size={16} />} onClick={chooseRecordingsDirectory}>
 										{t("recording.recordingsFolder")}
 									</DropdownItem>

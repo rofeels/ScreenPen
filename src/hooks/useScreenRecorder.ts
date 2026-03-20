@@ -208,6 +208,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		[],
 	);
 
+	const hideHudAfterRecordingStarts = useCallback(() => {
+		try {
+			window.electronAPI?.hudOverlayHide?.();
+		} catch (error) {
+			console.warn("Failed to auto-hide HUD after recording start:", error);
+		}
+	}, []);
+
 	const stopWebcamRecorder = useCallback(async () => {
 		const recorder = webcamRecorder.current;
 		const pending = webcamStopPromise.current;
@@ -532,6 +540,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					startTime.current = Date.now();
 					setRecording(true);
 					window.electronAPI?.setRecordingState(true);
+					hideHudAfterRecordingStarts();
 
 					return;
 				}
@@ -754,6 +763,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			startTime.current = Date.now();
 			setRecording(true);
 			window.electronAPI?.setRecordingState(true);
+			hideHudAfterRecordingStarts();
 		} catch (error) {
 			console.error("Failed to start recording:", error);
 			alert(

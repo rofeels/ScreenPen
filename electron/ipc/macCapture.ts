@@ -3,6 +3,8 @@ import type { NativeMacRecordingOptions, SelectedSource } from "./contracts";
 import { normalizeDesktopSourceName } from "./sourceSelection";
 import { parseWindowId } from "./windowBounds";
 
+const KNOWN_OWN_APP_NAMES = ["screencraft", "recordly"] as const;
+
 export function shouldBlockOwnWindowCapture(options: {
 	source: SelectedSource;
 	ownAppName: string;
@@ -15,7 +17,8 @@ export function shouldBlockOwnWindowCapture(options: {
 		!allowRecordlyWindowCapture &&
 		source.id?.startsWith("window:") &&
 		Boolean(appName) &&
-		(appName === ownAppName || appName === "recordly")
+		(appName === ownAppName ||
+			KNOWN_OWN_APP_NAMES.includes(appName as (typeof KNOWN_OWN_APP_NAMES)[number]))
 	);
 }
 

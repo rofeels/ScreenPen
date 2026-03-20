@@ -7,11 +7,11 @@ import {
 } from "./macCapture";
 
 describe("macCapture helpers", () => {
-	it("blocks own Recordly window capture when self-capture is disabled", () => {
+	it("blocks own ScreenCraft window capture when self-capture is disabled", () => {
 		expect(
 			shouldBlockOwnWindowCapture({
-				source: { id: "window:1", name: "Recordly", appName: "Recordly" },
-				ownAppName: "recordly",
+				source: { id: "window:1", name: "ScreenCraft", appName: "ScreenCraft" },
+				ownAppName: "screencraft",
 				allowRecordlyWindowCapture: false,
 			}),
 		).toBe(true);
@@ -19,7 +19,7 @@ describe("macCapture helpers", () => {
 		expect(
 			shouldBlockOwnWindowCapture({
 				source: { id: "window:1", name: "Safari", appName: "Safari" },
-				ownAppName: "recordly",
+				ownAppName: "screencraft",
 				allowRecordlyWindowCapture: false,
 			}),
 		).toBe(false);
