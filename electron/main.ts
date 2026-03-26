@@ -580,6 +580,11 @@ app.whenReady().then(async () => {
 		if (micStatus !== "granted") {
 			await systemPreferences.askForMediaAccess("microphone");
 		}
+
+		const cameraStatus = systemPreferences.getMediaAccessStatus("camera");
+		if (cameraStatus !== "granted") {
+			await systemPreferences.askForMediaAccess("camera");
+		}
 	}
 
 	ipcMain.on("hud-overlay-close", () => {
