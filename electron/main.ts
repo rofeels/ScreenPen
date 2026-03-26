@@ -566,12 +566,12 @@ app.on("second-instance", () => {
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "camera"];
 		return allowed.includes(permission);
 	});
 
 	session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "camera"];
 		callback(allowed.includes(permission));
 	});
 

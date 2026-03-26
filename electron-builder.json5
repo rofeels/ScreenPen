@@ -62,8 +62,8 @@
       "NSQuitAlwaysKeepsWindows": false,
       "NSAudioCaptureUsageDescription": "ScreenCraft needs audio capture permission to record system audio.",
       "NSMicrophoneUsageDescription": "ScreenCraft needs microphone access to record voice audio.",
-      "NSCameraUseContinuityCameraDeviceType": true,
-      "com.apple.security.device.audio-input": true
+      "NSCameraUsageDescription": "ScreenCraft needs camera access for webcam overlay.",
+      "NSCameraUseContinuityCameraDeviceType": true
     }
   },
   "linux": {
