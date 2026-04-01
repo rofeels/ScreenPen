@@ -81,6 +81,22 @@ function getNativeWindowListBinaryPath() {
 	return path.join(app.getPath("userData"), "native-tools", "openscreen-window-list");
 }
 
+async function ensureHelperOnLocalDisk(sourceBinaryPath: string, localBinaryPath: string) {
+	try {
+		const [sourceStat, localStat] = await Promise.all([
+			fs.stat(sourceBinaryPath),
+			fs.stat(localBinaryPath).catch(() => null),
+		]);
+		if (localStat && localStat.mtimeMs >= sourceStat.mtimeMs) {
+			return localBinaryPath;
+		}
+	} catch {}
+	await fs.mkdir(path.dirname(localBinaryPath), { recursive: true });
+	await fs.copyFile(sourceBinaryPath, localBinaryPath);
+	await fs.chmod(localBinaryPath, 0o755);
+	return localBinaryPath;
+}
+
 async function ensureSwiftHelperBinary(
 	sourcePath: string,
 	binaryPath: string,
@@ -91,7 +107,10 @@ async function ensureSwiftHelperBinary(
 		const prebundledPath = getPrebundledNativeHelperPath(prebundledBinaryName);
 		try {
 			await fs.access(prebundledPath, fsConstants.X_OK);
-			return prebundledPath;
+			// macOS 26+: ScreenCaptureKit requires binaries to run from a local volume.
+			// External volumes (/Volumes/...) are blocked from WindowServer access.
+			// Copy to a local path (userData) so the helper always runs from the internal disk.
+			return await ensureHelperOnLocalDisk(prebundledPath, binaryPath);
 		} catch {
 			if (app.isPackaged) {
 				throw new Error(

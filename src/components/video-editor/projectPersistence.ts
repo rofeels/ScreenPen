@@ -4,10 +4,12 @@ import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/as
 import {
 	type AnnotationRegion,
 	type AudioRegion,
+	type ChromaKeySettings,
 	type CropRegion,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	DEFAULT_CHROMA_KEY,
 	DEFAULT_CROP_REGION,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
@@ -423,6 +425,18 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				: DEFAULT_WEBCAM_CORNER_RADIUS,
 			shadow: isFiniteNumber(webcam.shadow) ? clamp(webcam.shadow, 0, 1) : DEFAULT_WEBCAM_SHADOW,
 			margin: isFiniteNumber(webcam.margin) ? clamp(webcam.margin, 0, 96) : DEFAULT_WEBCAM_MARGIN,
+			chromaKey: (() => {
+				const ck = (webcam as Partial<WebcamOverlaySettings>).chromaKey;
+				if (!ck || typeof ck !== "object") return DEFAULT_CHROMA_KEY;
+				const raw = ck as Partial<ChromaKeySettings>;
+				return {
+					enabled: typeof raw.enabled === "boolean" ? raw.enabled : DEFAULT_CHROMA_KEY.enabled,
+					color: typeof raw.color === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.color) ? raw.color : DEFAULT_CHROMA_KEY.color,
+					tolerance: isFiniteNumber(raw.tolerance) ? clamp(raw.tolerance, 0, 1) : DEFAULT_CHROMA_KEY.tolerance,
+					smoothness: isFiniteNumber(raw.smoothness) ? clamp(raw.smoothness, 0, 0.5) : DEFAULT_CHROMA_KEY.smoothness,
+					backgroundColor: typeof raw.backgroundColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.backgroundColor) ? raw.backgroundColor : null,
+				};
+			})(),
 		},
 		aspectRatio:
 			typeof editor.aspectRatio === "string" &&

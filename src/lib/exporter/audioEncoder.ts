@@ -121,7 +121,7 @@ export class AudioProcessor {
     const sampleRate = audioConfig.sampleRate || 48_000
     const channels = audioConfig.numberOfChannels || 2
     const encodeConfig: AudioEncoderConfig = {
-      codec: 'opus',
+      codec: 'mp4a.40.2',
       sampleRate,
       numberOfChannels: channels,
       bitrate: AUDIO_BITRATE,
@@ -358,29 +358,58 @@ export class AudioProcessor {
     return recordedBlob
   }
 
-  // Demuxes the rendered speed-adjusted blob and feeds encoded chunks into the MP4 muxer.
+  // Demuxes the rendered speed-adjusted blob, decodes it, re-encodes as AAC, and feeds into the MP4 muxer.
   private async muxRenderedAudioBlob(blob: Blob, muxer: VideoMuxer): Promise<void> {
     if (this.cancelled) return
 
-    const file = new File([blob], 'speed-audio.webm', { type: blob.type || 'audio/webm' })
+    const ext = blob.type.includes('mp4') ? 'speed-audio.mp4' : 'speed-audio.webm'
+    const file = new File([blob], ext, { type: blob.type || 'audio/webm' })
     const wasmUrl = new URL('./wasm/web-demuxer.wasm', window.location.href).href
     const demuxer = new WebDemuxer({ wasmFilePath: wasmUrl })
 
     try {
       await demuxer.load(file)
       const audioConfig = (await demuxer.getDecoderConfig('audio')) as AudioDecoderConfig
-      const reader = (demuxer.read('audio') as ReadableStream<EncodedAudioChunk>).getReader()
-      let isFirstChunk = true
 
+      const sampleRate = audioConfig.sampleRate || 48_000
+      const channels = audioConfig.numberOfChannels || 2
+
+      const encodeConfig: AudioEncoderConfig = {
+        codec: 'mp4a.40.2',
+        sampleRate,
+        numberOfChannels: channels,
+        bitrate: AUDIO_BITRATE,
+      }
+      const encodeSupport = await AudioEncoder.isConfigSupported(encodeConfig)
+      if (!encodeSupport.supported) {
+        console.warn('[AudioProcessor] AAC encoding not supported in muxRenderedAudioBlob, skipping audio')
+        return
+      }
+
+      const encodedChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = []
+      const encoder = new AudioEncoder({
+        output: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
+          encodedChunks.push({ chunk, meta })
+        },
+        error: (error: DOMException) => console.error('[AudioProcessor] Re-encode error:', error),
+      })
+      encoder.configure(encodeConfig)
+
+      const decodedFrames: AudioData[] = []
+      const decoder = new AudioDecoder({
+        output: (data: AudioData) => decodedFrames.push(data),
+        error: (error: DOMException) => console.error('[AudioProcessor] Decode error:', error),
+      })
+      decoder.configure(audioConfig)
+
+      const reader = (demuxer.read('audio') as ReadableStream<EncodedAudioChunk>).getReader()
       try {
         while (!this.cancelled) {
           const { done, value: chunk } = await reader.read()
           if (done || !chunk) break
-          if (isFirstChunk) {
-            await muxer.addAudioChunk(chunk, { decoderConfig: audioConfig })
-            isFirstChunk = false
-          } else {
-            await muxer.addAudioChunk(chunk)
+          decoder.decode(chunk)
+          while (decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT && !this.cancelled) {
+            await new Promise((resolve) => setTimeout(resolve, 1))
           }
         }
       } finally {
@@ -389,6 +418,30 @@ export class AudioProcessor {
         } catch {
           // reader already closed
         }
+      }
+
+      if (decoder.state === 'configured') {
+        await decoder.flush()
+        decoder.close()
+      }
+
+      for (const audioData of decodedFrames) {
+        if (this.cancelled) {
+          audioData.close()
+          continue
+        }
+        encoder.encode(audioData)
+        audioData.close()
+      }
+
+      if (encoder.state === 'configured') {
+        await encoder.flush()
+        encoder.close()
+      }
+
+      for (const { chunk, meta } of encodedChunks) {
+        if (this.cancelled) break
+        await muxer.addAudioChunk(chunk, meta)
       }
     } finally {
       try {
@@ -432,7 +485,7 @@ export class AudioProcessor {
   }
 
   private getSupportedAudioMimeType(): string | undefined {
-    const candidates = ['audio/webm;codecs=opus', 'audio/webm']
+    const candidates = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']
     for (const candidate of candidates) {
       if (MediaRecorder.isTypeSupported(candidate)) {
         return candidate

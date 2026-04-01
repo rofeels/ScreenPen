@@ -39,6 +39,85 @@ import {
 import { getWebcamOverlaySizePx } from "@/components/video-editor/webcamOverlay";
 import { resolveMediaElementSource } from "./localMediaSource";
 
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d + 6) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h, s, v];
+}
+
+function applyChromaKey(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  keyColor: string,
+  tolerance: number,
+  smoothness: number,
+  backgroundColor: string | null = null,
+): void {
+  const hex = keyColor.replace("#", "");
+  const kr = parseInt(hex.slice(0, 2), 16) / 255;
+  const kg = parseInt(hex.slice(2, 4), 16) / 255;
+  const kb = parseInt(hex.slice(4, 6), 16) / 255;
+  const [kh, ks] = rgbToHsv(kr, kg, kb);
+
+  let bgR = 0, bgG = 0, bgB = 0;
+  if (backgroundColor) {
+    const bgHex = backgroundColor.replace("#", "");
+    bgR = parseInt(bgHex.slice(0, 2), 16);
+    bgG = parseInt(bgHex.slice(2, 4), 16);
+    bgB = parseInt(bgHex.slice(4, 6), 16);
+  }
+
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const lo = Math.max(0, tolerance - smoothness);
+  const hi = tolerance;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i] / 255;
+    const g = data[i + 1] / 255;
+    const b = data[i + 2] / 255;
+    const [h, s] = rgbToHsv(r, g, b);
+
+    if (s < 0.15 || ks < 0.15) continue;
+
+    let hueDist = Math.abs(h - kh);
+    if (hueDist > 0.5) hueDist = 1 - hueDist;
+    // 채도 차이를 강하게 반영해 고채도 배경과 저채도 피부/머리카락 구분
+    const dist = hueDist * 1.5 + Math.abs(s - ks) * 1.5;
+
+    let alpha: number;
+    if (dist < lo) {
+      alpha = 0;
+    } else if (dist < hi) {
+      alpha = Math.round(((dist - lo) / (hi - lo)) * 255);
+    } else {
+      alpha = data[i + 3];
+    }
+    if (backgroundColor && alpha < 255) {
+      const t = alpha / 255;
+      data[i] = Math.round(bgR * (1 - t) + data[i] * t);
+      data[i + 1] = Math.round(bgG * (1 - t) + data[i + 1] * t);
+      data[i + 2] = Math.round(bgB * (1 - t) + data[i + 2] * t);
+      data[i + 3] = 255;
+    } else {
+      data[i + 3] = alpha;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 interface FrameRenderConfig {
   width: number;
   height: number;
@@ -1014,12 +1093,10 @@ export class FrameRenderer {
       );
     }
 
+    // 캐시 갱신 가능하면 video를 직접 사용, 아니면 마지막 캐시 사용, 둘 다 없으면 video 그대로 폴백
     const webcamFrameSource = canRefreshCache
       ? webcamVideo
-      : this.webcamFrameCacheCanvas;
-    if (!webcamFrameSource) {
-      return;
-    }
+      : (this.webcamFrameCacheCanvas ?? webcamVideo);
 
     const sourceWidth =
       ("videoWidth" in webcamFrameSource
@@ -1046,6 +1123,10 @@ export class FrameRenderer {
       bubbleCtx.restore();
     } else {
       bubbleCtx.drawImage(webcamFrameSource, drawX, drawY, drawWidth, drawHeight);
+    }
+
+    if (webcam.chromaKey?.enabled) {
+      applyChromaKey(bubbleCtx, Math.ceil(size), Math.ceil(size), webcam.chromaKey.color, webcam.chromaKey.tolerance, webcam.chromaKey.smoothness, webcam.chromaKey.backgroundColor ?? null);
     }
 
     if ((webcam.shadow ?? 0) > 0) {

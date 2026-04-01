@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages } from "lucide-react";
+import { FolderOpen, Languages, Subtitles, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -54,6 +54,7 @@ import {
 	type FigureData,
 	type PlaybackSpeed,
 	type SpeedRegion,
+	type SubtitleSegment,
 	type TrimRegion,
 	type WebcamOverlaySettings,
 	type ZoomDepth,
@@ -170,6 +171,8 @@ export default function VideoEditor() {
 	const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
 	const [hasPendingExportSave, setHasPendingExportSave] = useState(false);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+	const [subtitleSegments, setSubtitleSegments] = useState<SubtitleSegment[]>([]);
+	const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
 	const nextZoomIdRef = useRef(1);
@@ -549,6 +552,19 @@ export default function VideoEditor() {
 						enabled: Boolean(sessionResult.session?.webcamPath),
 						sourcePath: sessionResult.session?.webcamPath ?? null,
 					}));
+					// 녹화 중 기록한 줌 마크를 ZoomRegion으로 변환
+					const zoomMarksResult = await window.electronAPI.getZoomMarks?.();
+					if (zoomMarksResult?.success && zoomMarksResult.marks.length > 0) {
+						const ZOOM_DURATION_MS = 3000;
+						const newZoomRegions = zoomMarksResult.marks.map((mark) => ({
+							id: `zoom-${nextZoomIdRef.current++}`,
+							startMs: Math.max(0, mark.timeMs - ZOOM_DURATION_MS / 2),
+							endMs: mark.timeMs + ZOOM_DURATION_MS / 2,
+							depth: DEFAULT_ZOOM_DEPTH,
+							focus: { cx: mark.cx, cy: mark.cy },
+						}));
+						setZoomRegions(newZoomRegions);
+					}
 					return;
 				}
 
@@ -1085,6 +1101,18 @@ export default function VideoEditor() {
 			}
 		},
 		[selectedTrimId],
+	);
+
+	const handleTrimSuggested = useCallback(
+		(spans: { start: number; end: number }[]) => {
+			const newRegions = spans.map((span) => ({
+				id: `trim-${nextTrimIdRef.current++}`,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+			}));
+			setTrimRegions((prev) => [...prev, ...newRegions]);
+		},
+		[],
 	);
 
 	const handleSelectSpeed = useCallback((id: string | null) => {
@@ -1924,6 +1952,28 @@ export default function VideoEditor() {
 		toast.error(errorMessage);
 	}, [showExportSuccessToast, t]);
 
+	const handleGenerateSubtitles = useCallback(async () => {
+		if (!videoPath) {
+			toast.error(t("editor.messages.noVideoLoaded"));
+			return;
+		}
+		setIsGeneratingSubtitles(true);
+		try {
+			const sourcePath = videoSourcePath ?? fromFileUrl(videoPath);
+			const result = await window.electronAPI.generateSubtitles(sourcePath);
+			if (result.success && result.segments) {
+				setSubtitleSegments(result.segments);
+				toast.success("자막 생성이 완료되었습니다.");
+			} else {
+				toast.error(result.error || "자막 생성에 실패했습니다.");
+			}
+		} catch (err) {
+			toast.error(`자막 생성 오류: ${String(err)}`);
+		} finally {
+			setIsGeneratingSubtitles(false);
+		}
+	}, [videoPath, videoSourcePath, t]);
+
 	const openRecordingsFolder = useCallback(async () => {
 		try {
 			const result = await window.electronAPI.openRecordingsFolder();
@@ -1975,6 +2025,23 @@ export default function VideoEditor() {
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<LanguageSwitcher />
+					<button
+						type="button"
+						onClick={() => void handleGenerateSubtitles()}
+						disabled={isGeneratingSubtitles || !videoPath}
+						className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-white/90 transition hover:bg-white/8 hover:text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+						title="자막 생성"
+						aria-label="자막 생성"
+					>
+						{isGeneratingSubtitles ? (
+							<Loader2 className="h-4 w-4 animate-spin" />
+						) : (
+							<Subtitles className="h-4 w-4" />
+						)}
+						<span className="text-xs font-normal">
+							{isGeneratingSubtitles ? "자막 생성 중..." : "자막 생성"}
+						</span>
+					</button>
 					<button
 						type="button"
 						onClick={() => void openRecordingsFolder()}
@@ -2061,6 +2128,42 @@ export default function VideoEditor() {
 											cursorClickBounce={cursorClickBounce}
 											cursorSway={cursorSway}
 										/>
+										{/* 자막 오버레이 */}
+										{subtitleSegments.length > 0 && (() => {
+											const currentMs = currentTime * 1000;
+											const activeSub = subtitleSegments.find(
+												(seg) => currentMs >= seg.startMs && currentMs <= seg.endMs,
+											);
+											if (!activeSub) return null;
+											return (
+												<div
+													style={{
+														position: "absolute",
+														bottom: "8%",
+														left: "50%",
+														transform: "translateX(-50%)",
+														zIndex: 9999,
+														pointerEvents: "none",
+														maxWidth: "80%",
+														textAlign: "center",
+													}}
+												>
+													<span
+														style={{
+															backgroundColor: "rgba(0, 0, 0, 0.7)",
+															color: "#ffffff",
+															padding: "4px 12px",
+															borderRadius: "4px",
+															fontSize: "14px",
+															lineHeight: 1.4,
+															whiteSpace: "pre-wrap",
+														}}
+													>
+														{activeSub.text}
+													</span>
+												</div>
+											);
+										})()}
 									</div>
 								</div>
 								{/* Playback controls */}
@@ -2131,6 +2234,8 @@ export default function VideoEditor() {
 									onSelectAnnotation={handleSelectAnnotation}
 									aspectRatio={aspectRatio}
 									onAspectRatioChange={setAspectRatio}
+									videoUrl={videoPath}
+									onTrimSuggested={handleTrimSuggested}
 								/>
 							</div>
 						</Panel>

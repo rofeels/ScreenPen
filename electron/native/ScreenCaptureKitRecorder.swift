@@ -228,8 +228,10 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			}
 			try stream.addStreamOutput(self, type: microphoneOutputType, sampleHandlerQueue: queue)
 		}
-		try await stream.startCapture()
-
+		let permissionStatus = CGPreflightScreenCaptureAccess()
+		if !permissionStatus {
+			throw NSError(domain: "RecordlyCapture", code: 18, userInfo: [NSLocalizedDescriptionKey: "Screen recording permission denied for this process"])
+		}
 		guard assetWriter.startWriting() else {
 			throw NSError(domain: "RecordlyCapture", code: 8, userInfo: [NSLocalizedDescriptionKey: assetWriter.error?.localizedDescription ?? "Unable to start video writing"])
 		}
@@ -245,6 +247,17 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		firstSampleTime = .zero
 		lastVideoPresentationTime = .zero
 		lastVideoDuration = .zero
+
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+			stream.startCapture { error in
+				if let error = error {
+					continuation.resume(throwing: error)
+				} else {
+					continuation.resume()
+				}
+			}
+		}
+
 		startWindowValidationIfNeeded()
 		print("Recording started")
 		fflush(stdout)
@@ -281,21 +294,35 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 					  let statusRawValue = attachment[SCStreamFrameInfo.status] as? Int,
 					  let status = SCFrameStatus(rawValue: statusRawValue),
 					  status == .complete else {
+				if frameCount == 0 {
+					let statusRaw = (CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]])?.first?[SCStreamFrameInfo.status] as? Int ?? -1
+					fputs("Warning: screen frame skipped, status=\(statusRaw)\n", stderr)
+					fflush(stderr)
+				}
 				return
 			}
 
-			guard let videoInput = videoInput, videoInput.isReadyForMoreMediaData else { return }
+			guard let videoInput = videoInput, videoInput.isReadyForMoreMediaData else {
+				if frameCount == 0 {
+					fputs("Warning: videoInput not ready for first frame\n", stderr)
+					fflush(stderr)
+				}
+				return
+			}
 
 			if firstSampleTime == .zero {
 				firstSampleTime = sampleBuffer.presentationTimeStamp
 			}
 
 			lastSampleBuffer = sampleBuffer
-			let timing = CMSampleTimingInfo(duration: sampleBuffer.duration, presentationTimeStamp: presentationTime, decodeTimeStamp: sampleBuffer.decodeTimeStamp)
+			let effectiveDuration = sampleBuffer.duration.isValid && sampleBuffer.duration > .zero
+				? sampleBuffer.duration
+				: CMTime(value: 1, timescale: CMTimeScale(targetCaptureFPS))
+			let timing = CMSampleTimingInfo(duration: effectiveDuration, presentationTimeStamp: presentationTime, decodeTimeStamp: sampleBuffer.decodeTimeStamp)
 			if let retimedSampleBuffer = try? CMSampleBuffer(copying: sampleBuffer, withNewTiming: [timing]) {
 				videoInput.append(retimedSampleBuffer)
 				lastVideoPresentationTime = presentationTime
-				lastVideoDuration = sampleBuffer.duration
+				lastVideoDuration = effectiveDuration
 				frameCount += 1
 			}
 			return
@@ -347,10 +374,25 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			}
 		}
 
-		assetWriter?.endSession(atSourceTime: lastSampleBuffer?.presentationTimeStamp ?? .zero)
+		let endTime = lastVideoDuration > .zero
+			? lastVideoPresentationTime + lastVideoDuration
+			: (lastSampleBuffer?.presentationTimeStamp ?? CMTime(value: 1, timescale: CMTimeScale(targetCaptureFPS)))
+		guard endTime.isNumeric else {
+			fputs("Error: endTime is not numeric, skipping endSession\n", stderr)
+			fflush(stderr)
+			assetWriter?.cancelWriting()
+			throw NSError(domain: "RecordlyCapture", code: 17, userInfo: [NSLocalizedDescriptionKey: "No frames were recorded"])
+		}
+		assetWriter?.endSession(atSourceTime: endTime)
 		videoInput?.markAsFinished()
 		audioInput?.markAsFinished()
 		await assetWriter?.finishWriting()
+		if let writer = assetWriter, writer.status == .failed {
+			let errorMsg = writer.error?.localizedDescription ?? "unknown"
+			fputs("Error: assetWriter finishWriting failed: \(errorMsg)\n", stderr)
+			fflush(stderr)
+			throw NSError(domain: "RecordlyCapture", code: 16, userInfo: [NSLocalizedDescriptionKey: "Failed to finalize video file: \(errorMsg)"])
+		}
 
 		microphoneOnlyInput?.markAsFinished()
 		await microphoneOnlyWriter?.finishWriting()
@@ -511,49 +553,44 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 final class RecorderService {
 	private let recorder = ScreenCaptureRecorder()
-	private let queue = DispatchQueue(label: "openscreen.screencapturekit.commands")
 	private let completionGroup = DispatchGroup()
 
 	func start(configJSON: String) {
 		completionGroup.enter()
-		queue.async {
-			Task {
-				do {
-					try await self.recorder.startCapture(configJSON: configJSON)
-				} catch {
-					fputs("Error starting capture: \(error.localizedDescription)\n", stderr)
-					fflush(stderr)
-					self.completionGroup.leave()
-				}
+		Task { @MainActor in
+			do {
+				try await self.recorder.startCapture(configJSON: configJSON)
+			} catch {
+				fputs("Error starting capture: \(error.localizedDescription)\n", stderr)
+				fflush(stderr)
+				self.completionGroup.leave()
 			}
 		}
 	}
 
 	func stop() {
-		queue.async {
-			Task {
-				do {
-					let outputPath = try await self.recorder.stopCapture()
-					print("Recording stopped. Output path: \(outputPath)")
-					fflush(stdout)
-					self.completionGroup.leave()
-				} catch {
-					fputs("Error stopping capture: \(error.localizedDescription)\n", stderr)
-					fflush(stderr)
-					self.completionGroup.leave()
-				}
+		Task { @MainActor in
+			do {
+				let outputPath = try await self.recorder.stopCapture()
+				print("Recording stopped. Output path: \(outputPath)")
+				fflush(stdout)
+				self.completionGroup.leave()
+			} catch {
+				fputs("Error stopping capture: \(error.localizedDescription)\n", stderr)
+				fflush(stderr)
+				self.completionGroup.leave()
 			}
 		}
 	}
 
 	func pause() {
-		queue.async {
+		DispatchQueue.main.async {
 			self.recorder.pauseCapture()
 		}
 	}
 
 	func resume() {
-		queue.async {
+		DispatchQueue.main.async {
 			self.recorder.resumeCapture()
 		}
 	}
@@ -569,32 +606,43 @@ guard CommandLine.arguments.count >= 2 else {
 	exit(1)
 }
 
+// macOS 26: SCStream.startCapture() requires an NSApplication event loop.
+// Initialize NSApplication BEFORE any ScreenCaptureKit calls.
+let app = NSApplication.shared
+app.setActivationPolicy(.accessory)
+
 // Force CoreGraphics Services initialization on the main thread.
-// Without this, SCContentFilter(desktopIndependentWindow:) crashes with
-// CGS_REQUIRE_INIT because CGS is never initialised in a CLI tool.
 let _ = CGMainDisplayID()
 
 let service = RecorderService()
-service.start(configJSON: CommandLine.arguments[1])
 
-DispatchQueue.global(qos: .utility).async {
-	while let input = readLine(strippingNewline: true)?.lowercased() {
-		if input == "pause" {
-			service.pause()
-			continue
+// Start recording and stdin reader after run loop begins
+DispatchQueue.main.async {
+	service.start(configJSON: CommandLine.arguments[1])
+
+	DispatchQueue.global(qos: .utility).async {
+		while let input = readLine(strippingNewline: true)?.lowercased() {
+			if input == "pause" {
+				service.pause()
+				continue
+			}
+
+			if input == "resume" {
+				service.resume()
+				continue
+			}
+
+			if input == "stop" {
+				service.stop()
+				break
+			}
 		}
-
-		if input == "resume" {
-			service.resume()
-			continue
-		}
-
-		if input == "stop" {
-			service.stop()
-			break
+		service.waitUntilFinished()
+		DispatchQueue.main.async {
+			NSApplication.shared.terminate(nil)
 		}
 	}
 }
 
-service.waitUntilFinished()
+app.run()
 

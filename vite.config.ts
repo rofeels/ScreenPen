@@ -15,7 +15,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['ffmpeg-static', 'uiohook-napi'],
+              external: ['ffmpeg-static', 'uiohook-napi', 'nodejs-whisper', '@xenova/transformers'],
             },
           }
         }

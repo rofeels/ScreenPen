@@ -462,7 +462,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			recordingSessionTimestamp.current = Date.now();
 			startTime.current = recordingSessionTimestamp.current;
-			await startWebcamRecorder();
 
 			const platform = await window.electronAPI.getPlatform();
 			const useNativeMacScreenCapture =
@@ -507,6 +506,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					}
 				}
 
+				await startWebcamRecorder();
 				const nativeResult = await window.electronAPI.startNativeScreenRecording(selectedSource, {
 					capturesSystemAudio: systemAudioEnabled,
 					capturesMicrophone: microphoneEnabled,
@@ -759,6 +759,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			recorder.onerror = () => {
 				setRecording(false);
 			};
+			await startWebcamRecorder();
 			recorder.start(RECORDER_TIMESLICE_MS);
 			startTime.current = Date.now();
 			setRecording(true);

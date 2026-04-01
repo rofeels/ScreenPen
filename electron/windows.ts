@@ -20,6 +20,11 @@ let hudOverlayWindow: BrowserWindow | null = null;
 let hudOverlayHiddenFromCapture = true;
 let hudOverlayCaptureProtectionLoaded = false;
 let countdownWindow: BrowserWindow | null = null;
+let drawingOverlayWindow: BrowserWindow | null = null;
+let clickEffectWindow: BrowserWindow | null = null;
+let keystrokeWindow: BrowserWindow | null = null;
+let mediaPresenterWindow: BrowserWindow | null = null;
+let laserPointerWindow: BrowserWindow | null = null;
 
 const HUD_OVERLAY_SETTINGS_FILE = path.join(app.getPath("userData"), "hud-overlay-settings.json");
 const HUD_BOTTOM_CLEARANCE_CM = 3.5;
@@ -435,5 +440,368 @@ export function closeCountdownWindow(): void {
 	if (countdownWindow && !countdownWindow.isDestroyed()) {
 		countdownWindow.close();
 		countdownWindow = null;
+	}
+}
+
+export function createDrawingOverlayWindow(): BrowserWindow {
+	const primaryDisplay = getScreen().getPrimaryDisplay();
+	const { width, height } = primaryDisplay.size;
+
+	const win = new BrowserWindow({
+		width,
+		height,
+		x: 0,
+		y: 0,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		focusable: true,
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	// Must NOT have content protection so the overlay is captured in the recording
+	win.setContentProtection(false);
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+	win.webContents.on("did-finish-load", () => {
+		if (!win.isDestroyed()) {
+			win.show();
+			win.focus();
+		}
+	});
+
+	win.on("closed", () => {
+		if (drawingOverlayWindow === win) {
+			drawingOverlayWindow = null;
+		}
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=drawing-overlay");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "drawing-overlay" },
+		});
+	}
+
+	drawingOverlayWindow = win;
+	return win;
+}
+
+export function getDrawingOverlayWindow(): BrowserWindow | null {
+	return drawingOverlayWindow;
+}
+
+export function toggleDrawingOverlay(): void {
+	if (!drawingOverlayWindow || drawingOverlayWindow.isDestroyed()) {
+		createDrawingOverlayWindow();
+		return;
+	}
+	if (drawingOverlayWindow.isVisible()) {
+		drawingOverlayWindow.hide();
+	} else {
+		drawingOverlayWindow.show();
+		drawingOverlayWindow.focus();
+	}
+}
+
+export function destroyDrawingOverlay(): void {
+	if (drawingOverlayWindow && !drawingOverlayWindow.isDestroyed()) {
+		drawingOverlayWindow.close();
+		drawingOverlayWindow = null;
+	}
+}
+
+export function createClickEffectWindow(): BrowserWindow {
+	const primaryDisplay = getScreen().getPrimaryDisplay();
+	const { width, height } = primaryDisplay.size;
+
+	const win = new BrowserWindow({
+		width,
+		height,
+		x: 0,
+		y: 0,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		focusable: false,
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.setContentProtection(false);
+	win.setIgnoreMouseEvents(true);
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+	win.on("closed", () => {
+		if (clickEffectWindow === win) clickEffectWindow = null;
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=click-effect");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "click-effect" },
+		});
+	}
+
+	clickEffectWindow = win;
+	return win;
+}
+
+export function getClickEffectWindow(): BrowserWindow | null {
+	return clickEffectWindow;
+}
+
+export function showClickEffectWindow(): void {
+	if (clickEffectWindow && !clickEffectWindow.isDestroyed()) {
+		clickEffectWindow.showInactive();
+	}
+}
+
+export function hideClickEffectWindow(): void {
+	if (clickEffectWindow && !clickEffectWindow.isDestroyed()) {
+		clickEffectWindow.hide();
+	}
+}
+
+export function destroyClickEffectWindow(): void {
+	if (clickEffectWindow && !clickEffectWindow.isDestroyed()) {
+		clickEffectWindow.close();
+		clickEffectWindow = null;
+	}
+}
+
+export function createKeystrokeWindow(): BrowserWindow {
+	const primaryDisplay = getScreen().getPrimaryDisplay();
+	const { width } = primaryDisplay.size;
+
+	const winWidth = 520;
+	const winHeight = 280;
+
+	const win = new BrowserWindow({
+		width: winWidth,
+		height: winHeight,
+		x: Math.floor((width - winWidth) / 2),
+		y: 80,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		focusable: false,
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.setContentProtection(false);
+	win.setIgnoreMouseEvents(true);
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+	win.webContents.on("did-finish-load", () => {
+		if (!win.isDestroyed()) win.show();
+	});
+
+	win.on("closed", () => {
+		if (keystrokeWindow === win) keystrokeWindow = null;
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=keystroke-overlay");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "keystroke-overlay" },
+		});
+	}
+
+	keystrokeWindow = win;
+	return win;
+}
+
+export function getKeystrokeWindow(): BrowserWindow | null {
+	return keystrokeWindow;
+}
+
+export function toggleKeystrokeWindow(): void {
+	if (!keystrokeWindow || keystrokeWindow.isDestroyed()) {
+		createKeystrokeWindow();
+		return;
+	}
+	if (keystrokeWindow.isVisible()) {
+		keystrokeWindow.hide();
+	} else {
+		keystrokeWindow.show();
+	}
+}
+
+export function destroyKeystrokeWindow(): void {
+	if (keystrokeWindow && !keystrokeWindow.isDestroyed()) {
+		keystrokeWindow.close();
+		keystrokeWindow = null;
+	}
+}
+
+export function createMediaPresenterWindow(filePath: string): BrowserWindow {
+	if (mediaPresenterWindow && !mediaPresenterWindow.isDestroyed()) {
+		mediaPresenterWindow.webContents.send("media-presenter-file", filePath);
+		mediaPresenterWindow.focus();
+		return mediaPresenterWindow;
+	}
+
+	const win = new BrowserWindow({
+		width: 800,
+		height: 600,
+		frame: false,
+		transparent: true,
+		resizable: true,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: true,
+		focusable: true,
+		minWidth: 320,
+		minHeight: 240,
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+			webSecurity: false,
+		},
+	});
+
+	win.setContentProtection(false);
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+	win.webContents.on("did-finish-load", () => {
+		if (!win.isDestroyed()) {
+			win.show();
+			win.focus();
+			win.webContents.send("media-presenter-file", filePath);
+		}
+	});
+
+	win.on("closed", () => {
+		if (mediaPresenterWindow === win) {
+			mediaPresenterWindow = null;
+		}
+	});
+
+	const encodedPath = encodeURIComponent(filePath);
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(`${VITE_DEV_SERVER_URL}?windowType=media-presenter&filePath=${encodedPath}`);
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "media-presenter", filePath: encodedPath },
+		});
+	}
+
+	mediaPresenterWindow = win;
+	return win;
+}
+
+export function getMediaPresenterWindow(): BrowserWindow | null {
+	return mediaPresenterWindow;
+}
+
+export function destroyMediaPresenter(): void {
+	if (mediaPresenterWindow && !mediaPresenterWindow.isDestroyed()) {
+		mediaPresenterWindow.close();
+		mediaPresenterWindow = null;
+	}
+}
+
+export function createLaserPointerWindow(): BrowserWindow {
+	const primaryDisplay = getScreen().getPrimaryDisplay();
+	const { width, height } = primaryDisplay.size;
+
+	const win = new BrowserWindow({
+		width,
+		height,
+		x: 0,
+		y: 0,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		focusable: false,
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.setContentProtection(false);
+	win.setIgnoreMouseEvents(true);
+	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+	win.webContents.on("did-finish-load", () => {
+		if (!win.isDestroyed()) win.show();
+	});
+
+	win.on("closed", () => {
+		if (laserPointerWindow === win) laserPointerWindow = null;
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=laser-pointer");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "laser-pointer" },
+		});
+	}
+
+	laserPointerWindow = win;
+	return win;
+}
+
+export function getLaserPointerWindow(): BrowserWindow | null {
+	return laserPointerWindow;
+}
+
+export function toggleLaserPointer(): void {
+	if (!laserPointerWindow || laserPointerWindow.isDestroyed()) {
+		createLaserPointerWindow();
+		return;
+	}
+	if (laserPointerWindow.isVisible()) {
+		laserPointerWindow.hide();
+	} else {
+		laserPointerWindow.show();
+	}
+}
+
+export function destroyLaserPointer(): void {
+	if (laserPointerWindow && !laserPointerWindow.isDestroyed()) {
+		laserPointerWindow.close();
+		laserPointerWindow = null;
 	}
 }

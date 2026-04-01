@@ -21,6 +21,7 @@ import {
 } from "./ipc/handlers";
 import { checkForUpdatesManually, setupAutoUpdater } from "./updater";
 import {
+	createClickEffectWindow,
 	createEditorWindow,
 	createHudOverlayWindow,
 	createSettingsWindow,
@@ -645,5 +646,6 @@ app.whenReady().then(async () => {
 	});
 
 	createWindow();
+	createClickEffectWindow();
 	scheduleInitialHudRecovery();
 });

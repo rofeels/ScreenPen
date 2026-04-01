@@ -59,7 +59,8 @@ export function waitForNativeCaptureStart(
 	return new Promise<void>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			cleanup();
-			reject(new Error("Timed out waiting for ScreenCaptureKit recorder to start"));
+			const buf = getOutputBuffer();
+			reject(new Error(`Timed out waiting for ScreenCaptureKit recorder to start. Output: ${buf || "(empty)"}`));
 		}, timeoutMs);
 
 		const onStdout = (chunk: Buffer) => {
@@ -182,7 +183,6 @@ export async function mixNativeMacAudioTracks(
 				"aac",
 				"-b:a",
 				"192k",
-				"-shortest",
 				mixedOutputPath,
 			]
 		: [
@@ -201,7 +201,6 @@ export async function mixNativeMacAudioTracks(
 				"aac",
 				"-b:a",
 				"192k",
-				"-shortest",
 				mixedOutputPath,
 			];
 

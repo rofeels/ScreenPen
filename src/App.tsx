@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import { CountdownOverlay } from "./components/countdown/CountdownOverlay";
+import { ClickEffectOverlay } from "./components/recording-overlays/ClickEffectOverlay";
+import { DrawingOverlayApp } from "./components/drawing-overlay/DrawingOverlayApp";
+import { KeystrokeOverlay } from "./components/recording-overlays/KeystrokeOverlay";
+import { MediaPresenterApp } from "./components/media-presenter/MediaPresenterApp";
+import { LaserPointerOverlay } from "./components/recording-overlays/LaserPointerOverlay";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
 import { SettingsWindow } from "./components/settings/SettingsWindow";
@@ -19,7 +24,7 @@ export default function App() {
 		const type = params.get("windowType") || "";
 		setWindowType(type);
 
-		if (type === "hud-overlay" || type === "source-selector" || type === "countdown") {
+		if (type === "hud-overlay" || type === "source-selector" || type === "countdown" || type === "drawing-overlay" || type === "click-effect" || type === "keystroke-overlay" || type === "media-presenter" || type === "laser-pointer") {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";
 			document.getElementById("root")?.style.setProperty("background", "transparent");
@@ -57,6 +62,16 @@ export default function App() {
 			return <SourceSelector />;
 		case "countdown":
 			return <CountdownOverlay />;
+		case "drawing-overlay":
+			return <DrawingOverlayApp />;
+		case "click-effect":
+			return <ClickEffectOverlay />;
+		case "keystroke-overlay":
+			return <KeystrokeOverlay />;
+		case "media-presenter":
+			return <MediaPresenterApp />;
+		case "laser-pointer":
+			return <LaserPointerOverlay />;
 		case "editor":
 			return (
 				<ShortcutsProvider>

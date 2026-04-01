@@ -105,6 +105,8 @@ interface TimelineEditorProps {
 	onSelectAudio?: (id: string | null) => void;
 	aspectRatio: AspectRatio;
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
+	videoUrl?: string | null;
+	onTrimSuggested?: (spans: { start: number; end: number }[]) => void;
 }
 
 interface TimelineScaleConfig {
@@ -699,6 +701,8 @@ export default function TimelineEditor({
 	onSelectAudio,
 	aspectRatio,
 	onAspectRatioChange,
+	videoUrl,
+	onTrimSuggested,
 }: TimelineEditorProps) {
 	const t = useScopedT("timeline");
 	const tShortcuts = useScopedT("shortcuts");
@@ -1086,6 +1090,34 @@ export default function TimelineEditor({
 		cursorTelemetry,
 		t,
 	]);
+
+	const [isDetectingSilence, setIsDetectingSilence] = useState(false);
+
+	const handleDetectSilence = useCallback(async () => {
+		if (!videoUrl || !onTrimSuggested || totalMs === 0) return;
+		setIsDetectingSilence(true);
+		try {
+			const { detectSilenceSegments } = await import("./silenceDetectionUtils");
+			const segments = await detectSilenceSegments(videoUrl);
+			if (segments.length === 0) {
+				toast.info("무음 구간을 찾지 못했습니다.", {
+					description: "영상에 무음 구간이 없거나 임계값을 조정해보세요.",
+				});
+				return;
+			}
+			// Filter out segments outside video duration
+			const valid = segments.filter(
+				(s) => s.startMs >= 0 && s.endMs <= totalMs && s.endMs - s.startMs > 0,
+			);
+			onTrimSuggested(valid.map((s) => ({ start: s.startMs, end: s.endMs })));
+			toast.success(`무음 구간 ${valid.length}개를 트림으로 추가했습니다.`);
+		} catch (err) {
+			toast.error("무음 감지 중 오류가 발생했습니다.");
+			console.error("[SilenceDetection]", err);
+		} finally {
+			setIsDetectingSilence(false);
+		}
+	}, [videoUrl, onTrimSuggested, totalMs]);
 
 	const handleAddTrim = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
@@ -1532,6 +1564,22 @@ export default function TimelineEditor({
 					>
 						<Scissors className="w-4 h-4" />
 					</Button>
+					{videoUrl && onTrimSuggested && (
+						<Button
+							onClick={() => { void handleDetectSilence(); }}
+							variant="ghost"
+							size="icon"
+							disabled={isDetectingSilence}
+							className="h-7 w-7 text-slate-400 hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
+							title="무음 구간 자동 감지"
+						>
+							{isDetectingSilence ? (
+								<span className="w-4 h-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+							) : (
+								<WandSparkles className="w-4 h-4" />
+							)}
+						</Button>
+					)}
 					<Button
 						onClick={handleAddAnnotation}
 						variant="ghost"

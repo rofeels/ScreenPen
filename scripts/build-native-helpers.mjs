@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 import { chmod, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -9,6 +10,13 @@ if (process.platform !== 'darwin') {
   console.log('[build-native-helpers] Skipping: host platform is not macOS.');
   process.exit(0);
 }
+
+// Use the host macOS version as the deployment target so ScreenCaptureKit
+// binaries are linked correctly for the running OS (critical on macOS 26+).
+const hostMacosVersion = os.release().split('.').map(Number);
+const darwinMajor = hostMacosVersion[0] ?? 24;
+// Darwin 25 = macOS 26, Darwin 24 = macOS 15, Darwin 23 = macOS 14
+const macosMinTarget = darwinMajor >= 25 ? '26.0' : darwinMajor >= 24 ? '15.0' : '14.0';
 
 const archTag = process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
 const outputDir = path.join(nativeRoot, 'bin', archTag);
@@ -44,11 +52,16 @@ for (const helper of helpers) {
   const sourcePath = path.join(nativeRoot, helper.source);
   const outputPath = path.join(outputDir, helper.output);
 
+  const frameworks = helper.source === 'ScreenCaptureKitRecorder.swift'
+    ? ['-framework', 'ScreenCaptureKit', '-framework', 'AppKit', '-framework', 'CoreMedia', '-framework', 'AVFoundation']
+    : [];
+
   const result = spawnSync('swiftc', [
     '-O',
-    '-target', process.arch === 'arm64' ? 'arm64-apple-macos14.0' : 'x86_64-apple-macos14.0',
+    '-target', process.arch === 'arm64' ? `arm64-apple-macos${macosMinTarget}` : `x86_64-apple-macos${macosMinTarget}`,
     sourcePath,
-    '-o', outputPath
+    '-o', outputPath,
+    ...frameworks
   ], {
     encoding: 'utf8',
     timeout: 120000,

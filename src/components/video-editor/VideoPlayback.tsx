@@ -207,6 +207,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
     const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
     const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
     const webcamBubbleRef = useRef<HTMLDivElement | null>(null);
+    const webcamCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const webcamChromaRafRef = useRef<number | null>(null);
     const currentTimeRef = useRef(0);
     const zoomRegionsRef = useRef<ZoomRegion[]>([]);
     const selectedZoomIdRef = useRef<string | null>(null);
@@ -707,7 +709,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       }
 
       const targetTime = Math.max(0, currentTime);
-      if (Math.abs(webcamVideo.currentTime - targetTime) > (isPlaying ? 0.1 : 0.01)) {
+      // 재생 중엔 seek 금지 — currentTime 강제 세팅 시 video가 잠깐 blank 프레임을 내보내 깜빡임 발생
+      if (!isPlaying && Math.abs(webcamVideo.currentTime - targetTime) > 0.01) {
         try {
           webcamVideo.currentTime = targetTime;
         } catch {
@@ -724,6 +727,107 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         webcamVideo.pause();
       }
     }, [currentTime, isPlaying, webcam, webcamVideoPath]);
+
+    useEffect(() => {
+      const video = webcamVideoRef.current;
+      const canvas = webcamCanvasRef.current;
+      if (!canvas || !video || !webcam?.enabled || !webcam?.chromaKey?.enabled) {
+        if (webcamChromaRafRef.current) {
+          cancelAnimationFrame(webcamChromaRafRef.current);
+          webcamChromaRafRef.current = null;
+        }
+        return;
+      }
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      const hex = webcam.chromaKey.color.replace("#", "");
+      const kr = parseInt(hex.slice(0, 2), 16) / 255;
+      const kg = parseInt(hex.slice(2, 4), 16) / 255;
+      const kb = parseInt(hex.slice(4, 6), 16) / 255;
+      const toHsv = (r: number, g: number, b: number): [number, number, number] => {
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        const s = max === 0 ? 0 : d / max;
+        let h = 0;
+        if (d > 0) {
+          if (max === r) h = ((g - b) / d + 6) % 6;
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h /= 6;
+        }
+        return [h, s, max];
+      };
+      const [kh, ks] = toHsv(kr, kg, kb);
+      const tolerance = webcam.chromaKey.tolerance;
+      const smoothness = webcam.chromaKey.smoothness;
+      const lo = Math.max(0, tolerance - smoothness);
+      const hi = tolerance;
+      const bgColor = webcam.chromaKey.backgroundColor ?? null;
+      let bgR = 0, bgG = 0, bgB = 0;
+      if (bgColor) {
+        const bgHex = bgColor.replace("#", "");
+        bgR = parseInt(bgHex.slice(0, 2), 16);
+        bgG = parseInt(bgHex.slice(2, 4), 16);
+        bgB = parseInt(bgHex.slice(4, 6), 16);
+      }
+
+      let lastW = 0;
+      let lastH = 0;
+
+      const tick = () => {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (vw !== lastW || vh !== lastH) {
+            canvas.width = vw;
+            canvas.height = vh;
+            lastW = vw;
+            lastH = vh;
+          }
+          ctx.drawImage(video, 0, 0);
+          const imageData = ctx.getImageData(0, 0, vw, vh);
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i] / 255;
+            const g = data[i + 1] / 255;
+            const b = data[i + 2] / 255;
+            const [h, s] = toHsv(r, g, b);
+            if (s < 0.15 || ks < 0.15) continue;
+            let hueDist = Math.abs(h - kh);
+            if (hueDist > 0.5) hueDist = 1 - hueDist;
+            const dist = hueDist * 1.5 + Math.abs(s - ks) * 1.5;
+            let alpha: number;
+            if (dist < lo) {
+              alpha = 0;
+            } else if (dist < hi) {
+              alpha = Math.round(((dist - lo) / (hi - lo)) * 255);
+            } else {
+              alpha = data[i + 3];
+            }
+            if (bgColor && alpha < 255) {
+              const t = alpha / 255;
+              data[i] = Math.round(bgR * (1 - t) + data[i] * t);
+              data[i + 1] = Math.round(bgG * (1 - t) + data[i + 1] * t);
+              data[i + 2] = Math.round(bgB * (1 - t) + data[i + 2] * t);
+              data[i + 3] = 255;
+            } else {
+              data[i + 3] = alpha;
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+        webcamChromaRafRef.current = requestAnimationFrame(tick);
+      };
+      webcamChromaRafRef.current = requestAnimationFrame(tick);
+
+      return () => {
+        if (webcamChromaRafRef.current) {
+          cancelAnimationFrame(webcamChromaRafRef.current);
+          webcamChromaRafRef.current = null;
+        }
+      };
+    }, [webcam, webcamVideoPath]);
 
     useEffect(() => {
       const overlayEl = overlayRef.current;
@@ -1336,8 +1440,25 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
                   muted
                   playsInline
                   preload="auto"
-                  style={{ transform: webcam.mirror ? "scaleX(-1)" : undefined }}
+                  style={{
+                    transform: webcam.mirror ? "scaleX(-1)" : undefined,
+                    opacity: webcam.chromaKey?.enabled ? 0 : undefined,
+                    position: webcam.chromaKey?.enabled ? "absolute" : undefined,
+                    pointerEvents: webcam.chromaKey?.enabled ? "none" : undefined,
+                  }}
                 />
+                {webcam.chromaKey?.enabled ? (
+                  <canvas
+                    ref={webcamCanvasRef}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      transform: webcam.mirror ? "scaleX(-1)" : undefined,
+                    }}
+                  />
+                ) : null}
               </div>
             ) : null}
             {(() => {

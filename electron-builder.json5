@@ -17,7 +17,7 @@
     }
   ],
   "npmRebuild": true,
-  "buildDependenciesFromSource": true,
+  "buildDependenciesFromSource": false,
   "compression": "normal",
   "directories": {
     "output": "release"

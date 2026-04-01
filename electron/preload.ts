@@ -251,4 +251,66 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("countdown-tick", listener);
 		return () => ipcRenderer.removeListener("countdown-tick", listener);
 	},
+	toggleDrawingOverlay: () => {
+		return ipcRenderer.invoke("toggle-drawing-overlay");
+	},
+	destroyDrawingOverlay: () => {
+		return ipcRenderer.invoke("destroy-drawing-overlay");
+	},
+	onCursorScreenPosition: (callback: (pos: { x: number; y: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, pos: { x: number; y: number }) =>
+			callback(pos);
+		ipcRenderer.on("cursor-screen-position", listener);
+		return () => ipcRenderer.removeListener("cursor-screen-position", listener);
+	},
+	onClickEvent: (callback: (data: { x: number; y: number; type: string }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, data: { x: number; y: number; type: string }) =>
+			callback(data);
+		ipcRenderer.on("click-event", listener);
+		return () => ipcRenderer.removeListener("click-event", listener);
+	},
+	onKeystrokeEvent: (callback: (data: { keycode: number; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, data: { keycode: number; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) =>
+			callback(data);
+		ipcRenderer.on("keystroke-event", listener);
+		return () => ipcRenderer.removeListener("keystroke-event", listener);
+	},
+	onChapterMark: (callback: (data: { timeMs: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, data: { timeMs: number }) =>
+			callback(data);
+		ipcRenderer.on("chapter-mark", listener);
+		return () => ipcRenderer.removeListener("chapter-mark", listener);
+	},
+	getChapterMarks: () => {
+		return ipcRenderer.invoke("get-chapter-marks");
+	},
+	getZoomMarks: () => {
+		return ipcRenderer.invoke("get-zoom-marks");
+	},
+	onZoomMark: (callback: (data: { timeMs: number; cx: number; cy: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, data: { timeMs: number; cx: number; cy: number }) =>
+			callback(data);
+		ipcRenderer.on("zoom-mark", listener);
+		return () => ipcRenderer.removeListener("zoom-mark", listener);
+	},
+	closeMediaPresenter: () => ipcRenderer.invoke("close-media-presenter"),
+	onLaserPointerPosition: (callback: (pos: { x: number; y: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, pos: { x: number; y: number }) => callback(pos);
+		ipcRenderer.on("cursor-screen-position", listener);
+		return () => ipcRenderer.removeListener("cursor-screen-position", listener);
+	},
+	setMediaPresenterOpacity: (opacity: number) => ipcRenderer.invoke("set-media-presenter-opacity", opacity),
+	onMediaPresenterFile: (callback: (filePath: string) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, filePath: string) => callback(filePath);
+		ipcRenderer.on("media-presenter-file", listener);
+		return () => ipcRenderer.removeListener("media-presenter-file", listener);
+	},
+	onMediaPresenterPptWarning: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("media-presenter-ppt-warning", listener);
+		return () => ipcRenderer.removeListener("media-presenter-ppt-warning", listener);
+	},
+	generateSubtitles: (videoPath: string) => {
+		return ipcRenderer.invoke("generate-subtitles", videoPath);
+	},
 });

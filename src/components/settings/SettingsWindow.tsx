@@ -1,3 +1,4 @@
+import Block from "@uiw/react-color-block";
 import {
 	CheckCircle2,
 	EyeOff,
@@ -9,6 +10,7 @@ import {
 	ShieldCheck,
 	SlidersHorizontal,
 	TimerReset,
+	Video,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -21,6 +23,8 @@ import { type AppLocale, LOCALE_OPTIONS } from "@/i18n/config";
 import { FIXED_SHORTCUTS, formatBinding, SHORTCUT_ACTIONS, SHORTCUT_LABELS } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import { formatShortcut } from "@/utils/platformUtils";
+import { loadEditorPreferences, saveEditorPreferences } from "../video-editor/editorPreferences";
+import { DEFAULT_CHROMA_KEY } from "../video-editor/types";
 
 const COUNTDOWN_OPTIONS = [0, 3, 5, 10] as const;
 
@@ -109,6 +113,10 @@ export function SettingsWindow() {
 
 	const [platform, setPlatform] = useState<string | null>(null);
 	const [countdownDelay, setCountdownDelay] = useState<number>(3);
+	const [chromaKey, setChromaKey] = useState(() => {
+		const prefs = loadEditorPreferences();
+		return prefs.webcam?.chromaKey ?? DEFAULT_CHROMA_KEY;
+	});
 	const [recordingsDirectory, setRecordingsDirectory] = useState<string | null>(null);
 	const [isDefaultRecordingsDirectory, setIsDefaultRecordingsDirectory] = useState(false);
 	const [hideHudFromCapture, setHideHudFromCapture] = useState(true);
@@ -264,6 +272,17 @@ export function SettingsWindow() {
 
 		window.setTimeout(tick, 350);
 	}, [refreshPermissionsAndSettings]);
+
+	const updateChromaKey = useCallback((patch: Partial<typeof DEFAULT_CHROMA_KEY>) => {
+		setChromaKey((prev) => {
+			const next = { ...prev, ...patch };
+			const prefs = loadEditorPreferences();
+			saveEditorPreferences({
+				webcam: { ...prefs.webcam, chromaKey: next },
+			});
+			return next;
+		});
+	}, []);
 
 	const handleCountdownChange = useCallback(
 		async (delay: number) => {
@@ -522,6 +541,95 @@ export function SettingsWindow() {
 									checked={hideHudFromCapture}
 									onCheckedChange={(checked) => void handleHudCaptureProtectionChange(checked)}
 								/>
+							</div>
+						</SectionCard>
+
+						<SectionCard
+							icon={<Video className="h-5 w-5" />}
+							title={tSettings("preferences.sections.webcam")}
+							description={tSettings("preferences.webcamDescription")}
+						>
+							<div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 space-y-4">
+								<div className="flex items-start justify-between gap-4">
+									<div className="space-y-1">
+										<p className="text-sm font-medium text-slate-100">
+											{tSettings("preferences.webcamChromaKeyTitle")}
+										</p>
+										<p className="text-sm leading-6 text-slate-400">
+											{tSettings("preferences.webcamChromaKeyDescription")}
+										</p>
+									</div>
+									<Switch
+										checked={chromaKey.enabled}
+										onCheckedChange={(enabled) => updateChromaKey({ enabled })}
+									/>
+								</div>
+								{chromaKey.enabled && (
+									<div className="space-y-4 border-t border-white/10 pt-4">
+										<div className="space-y-2">
+											<p className="text-sm font-medium text-slate-100">
+												{tSettings("preferences.webcamChromaKeyColor")}
+											</p>
+											<Block
+												color={chromaKey.color}
+												onChange={(c) => updateChromaKey({ color: c.hex })}
+											/>
+										</div>
+										<div className="space-y-2">
+											<div className="flex items-center justify-between">
+												<p className="text-sm font-medium text-slate-100">
+													{tSettings("preferences.webcamChromaKeyBackground")}
+												</p>
+												<Switch
+													checked={chromaKey.backgroundColor !== null}
+													onCheckedChange={(checked) => updateChromaKey({ backgroundColor: checked ? "#ffffff" : null })}
+												/>
+											</div>
+											{chromaKey.backgroundColor !== null && (
+												<Block
+													color={chromaKey.backgroundColor}
+													onChange={(c) => updateChromaKey({ backgroundColor: c.hex })}
+												/>
+											)}
+										</div>
+										<div className="space-y-2">
+											<div className="flex items-center justify-between">
+												<p className="text-sm font-medium text-slate-100">
+													{tSettings("preferences.webcamChromaKeyTolerance")}
+												</p>
+												<span className="text-sm text-slate-400">{Math.round(chromaKey.tolerance * 100)}%</span>
+											</div>
+											<input
+												type="range"
+												min={0}
+												max={1}
+												step={0.01}
+												value={chromaKey.tolerance}
+												onChange={(e) => updateChromaKey({ tolerance: Number(e.target.value) })}
+												className="w-full"
+												style={{ accentColor: "#2563EB", cursor: "pointer" }}
+											/>
+										</div>
+										<div className="space-y-2">
+											<div className="flex items-center justify-between">
+												<p className="text-sm font-medium text-slate-100">
+													{tSettings("preferences.webcamChromaKeySmoothness")}
+												</p>
+												<span className="text-sm text-slate-400">{Math.round(chromaKey.smoothness * 100)}%</span>
+											</div>
+											<input
+												type="range"
+												min={0}
+												max={0.5}
+												step={0.01}
+												value={chromaKey.smoothness}
+												onChange={(e) => updateChromaKey({ smoothness: Number(e.target.value) })}
+												className="w-full"
+												style={{ accentColor: "#2563EB", cursor: "pointer" }}
+											/>
+										</div>
+									</div>
+								)}
 							</div>
 						</SectionCard>
 					</div>

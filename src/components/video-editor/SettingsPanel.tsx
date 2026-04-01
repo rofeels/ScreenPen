@@ -45,6 +45,7 @@ import { SliderControl } from "./SliderControl";
 import type {
 	AnnotationRegion,
 	AnnotationType,
+	ChromaKeySettings,
 	CropRegion,
 	FigureData,
 	PlaybackSpeed,
@@ -52,6 +53,7 @@ import type {
 	ZoomDepth,
 } from "./types";
 import {
+	DEFAULT_CHROMA_KEY,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
@@ -469,6 +471,11 @@ export function SettingsPanel({
 		onWebcamChange({ ...webcam, ...patch });
 	};
 
+	const updateChromaKey = (patch: Partial<ChromaKeySettings>) => {
+		if (!webcam || !onWebcamChange) return;
+		onWebcamChange({ ...webcam, chromaKey: { ...(webcam.chromaKey ?? DEFAULT_CHROMA_KEY), ...patch } });
+	};
+
 	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (!files || files.length === 0) return;
@@ -874,6 +881,51 @@ export function SettingsPanel({
 										formatValue={(v) => `${Math.round(v * 100)}%`}
 										parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
 									/>
+								</div>
+								<div className="col-span-2 rounded-lg border border-white/5 bg-white/5 p-2 space-y-2">
+									<div className="flex items-center justify-between">
+										<div className="text-[10px] font-medium text-slate-300">
+											{tSettings("effects.webcamChromaKey")}
+										</div>
+										<Switch
+											checked={webcam?.chromaKey?.enabled ?? false}
+											onCheckedChange={(enabled) => updateChromaKey({ enabled })}
+											className="data-[state=checked]:bg-[#2563EB] scale-90"
+										/>
+									</div>
+									{webcam?.chromaKey?.enabled ? (
+										<>
+											<div className="space-y-1">
+												<div className="text-[10px] text-slate-400">{tSettings("effects.webcamChromaKeyColor")}</div>
+												<Block
+													color={webcam.chromaKey.color ?? DEFAULT_CHROMA_KEY.color}
+													onChange={(c) => updateChromaKey({ color: c.hex })}
+												/>
+											</div>
+											<SliderControl
+												label={tSettings("effects.webcamChromaKeyTolerance")}
+												value={webcam.chromaKey.tolerance ?? DEFAULT_CHROMA_KEY.tolerance}
+												defaultValue={DEFAULT_CHROMA_KEY.tolerance}
+												min={0}
+												max={1}
+												step={0.01}
+												onChange={(v) => updateChromaKey({ tolerance: v })}
+												formatValue={(v) => `${Math.round(v * 100)}%`}
+												parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
+											/>
+											<SliderControl
+												label={tSettings("effects.webcamChromaKeySmoothness")}
+												value={webcam.chromaKey.smoothness ?? DEFAULT_CHROMA_KEY.smoothness}
+												defaultValue={DEFAULT_CHROMA_KEY.smoothness}
+												min={0}
+												max={0.5}
+												step={0.01}
+												onChange={(v) => updateChromaKey({ smoothness: v })}
+												formatValue={(v) => `${Math.round(v * 100)}%`}
+												parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
+											/>
+										</>
+									) : null}
 								</div>
 								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="text-[10px] font-medium text-slate-300">

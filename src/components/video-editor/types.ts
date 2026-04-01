@@ -46,6 +46,14 @@ export interface CursorVisualSettings {
 
 export type WebcamCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
+export interface ChromaKeySettings {
+  enabled: boolean;
+  color: string;
+  tolerance: number;
+  smoothness: number;
+  backgroundColor: string | null;
+}
+
 export interface WebcamOverlaySettings {
   enabled: boolean;
   sourcePath: string | null;
@@ -56,6 +64,7 @@ export interface WebcamOverlaySettings {
   cornerRadius: number;
   shadow: number;
   margin: number;
+  chromaKey: ChromaKeySettings;
 }
 
 export const DEFAULT_CURSOR_SIZE = 3.0;
@@ -69,6 +78,13 @@ export const DEFAULT_WEBCAM_REACT_TO_ZOOM = true;
 export const DEFAULT_WEBCAM_CORNER_RADIUS = 18;
 export const DEFAULT_WEBCAM_SHADOW = 0.35;
 export const DEFAULT_WEBCAM_MARGIN = 24;
+export const DEFAULT_CHROMA_KEY: ChromaKeySettings = {
+  enabled: false,
+  color: "#00ff00",
+  tolerance: 0.35,
+  smoothness: 0.15,
+  backgroundColor: null,
+};
 
 export const DEFAULT_WEBCAM_OVERLAY: WebcamOverlaySettings = {
   enabled: false,
@@ -80,6 +96,7 @@ export const DEFAULT_WEBCAM_OVERLAY: WebcamOverlaySettings = {
   cornerRadius: DEFAULT_WEBCAM_CORNER_RADIUS,
   shadow: DEFAULT_WEBCAM_SHADOW,
   margin: DEFAULT_WEBCAM_MARGIN,
+  chromaKey: DEFAULT_CHROMA_KEY,
 };
 
 export interface TrimRegion {
@@ -244,4 +261,11 @@ export function clampFocusToDepth(
 function clamp(value: number, min: number, max: number) {
   if (Number.isNaN(value)) return (min + max) / 2;
   return Math.min(max, Math.max(min, value));
+}
+
+export interface SubtitleSegment {
+  id: string;
+  startMs: number;
+  endMs: number;
+  text: string;
 }

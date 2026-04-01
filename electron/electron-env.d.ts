@@ -226,6 +226,26 @@ declare global {
 			startCountdown: (seconds: number) => Promise<{ success: boolean; cancelled?: boolean }>;
 			cancelCountdown: () => Promise<{ success: boolean }>;
 			onCountdownTick: (callback: (seconds: number) => void) => () => void;
+			/** Drawing overlay during recording */
+			toggleDrawingOverlay: () => Promise<{ success: boolean }>;
+			destroyDrawingOverlay: () => Promise<{ success: boolean }>;
+			onCursorScreenPosition: (callback: (pos: { x: number; y: number }) => void) => () => void;
+			onClickEvent: (callback: (data: { x: number; y: number; type: string }) => void) => () => void;
+			onKeystrokeEvent: (callback: (data: { keycode: number; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void) => () => void;
+			onChapterMark: (callback: (data: { timeMs: number }) => void) => () => void;
+			getChapterMarks: () => Promise<{ success: boolean; marks: { timeMs: number }[] }>;
+			getZoomMarks: () => Promise<{ success: boolean; marks: { timeMs: number; cx: number; cy: number }[] }>;
+			onZoomMark: (callback: (data: { timeMs: number; cx: number; cy: number }) => void) => () => void;
+			closeMediaPresenter: () => Promise<{ success: boolean }>;
+			onLaserPointerPosition: (callback: (pos: { x: number; y: number }) => void) => () => void;
+			setMediaPresenterOpacity: (opacity: number) => Promise<{ success: boolean }>;
+			onMediaPresenterFile: (callback: (filePath: string) => void) => () => void;
+			onMediaPresenterPptWarning: (callback: () => void) => () => void;
+			generateSubtitles: (videoPath: string) => Promise<{
+				success: boolean;
+				segments?: Array<{ id: string; startMs: number; endMs: number; text: string }>;
+				error?: string;
+			}>;
 		};
 	}
 

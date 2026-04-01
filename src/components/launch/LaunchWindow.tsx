@@ -11,6 +11,7 @@ import {
 	Monitor,
 	MoreVertical,
 	Pause,
+	Pipette,
 	Play,
 	Settings2,
 	Square,
@@ -33,8 +34,12 @@ import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { useVideoDevices } from "../../hooks/useVideoDevices";
+import { toast } from "sonner";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { ContentClamp } from "../ui/content-clamp";
+import { loadEditorPreferences, saveEditorPreferences } from "../video-editor/editorPreferences";
+import { DEFAULT_CHROMA_KEY } from "../video-editor/types";
+import Block from "@uiw/react-color-block";
 import styles from "./LaunchWindow.module.css";
 
 interface DesktopSource {
@@ -139,6 +144,7 @@ function MicDeviceRow({
 export function LaunchWindow() {
 	const { locale, setLocale } = useI18n();
 	const t = useScopedT("launch");
+	const tSettings = useScopedT("settings");
 
 	const {
 		recording,
@@ -178,6 +184,33 @@ export function LaunchWindow() {
 	const [platform, setPlatform] = useState<string | null>(null);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const webcamPreviewRef = useRef<HTMLVideoElement | null>(null);
+	const webcamPreviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+	const webcamPreviewChromaRafRef = useRef<number | null>(null);
+	const [webcamPreviewSize, setWebcamPreviewSize] = useState<number>(() => {
+		try {
+			const stored = globalThis.localStorage?.getItem("recordly.webcam.previewSize");
+			const parsed = stored ? Number(stored) : NaN;
+			return Number.isFinite(parsed) && parsed >= 80 && parsed <= 260 ? parsed : 160;
+		} catch {
+			return 160;
+		}
+	});
+
+	const [chromaKey, setChromaKey] = useState(() => {
+		const prefs = loadEditorPreferences();
+		return prefs.webcam?.chromaKey ?? DEFAULT_CHROMA_KEY;
+	});
+
+	const updateChromaKey = useCallback((patch: Partial<typeof DEFAULT_CHROMA_KEY>) => {
+		setChromaKey((prev) => {
+			const next = { ...prev, ...patch };
+			const prefs = loadEditorPreferences();
+			saveEditorPreferences({ webcam: { ...prefs.webcam, chromaKey: next } });
+			return next;
+		});
+	}, []);
+
+	const [eyedropperActive, setEyedropperActive] = useState(false);
 
 	const micDropdownOpen = activeDropdown === "mic";
 	const webcamDropdownOpen = activeDropdown === "webcam";
@@ -260,6 +293,113 @@ export function LaunchWindow() {
 			previewStream?.getTracks().forEach((track) => track.stop());
 		};
 	}, [showWebcamControls, webcamDeviceId]);
+
+	useEffect(() => {
+		const video = webcamPreviewRef.current;
+		const canvas = webcamPreviewCanvasRef.current;
+		if (!canvas || !video || !showWebcamControls) {
+			if (webcamPreviewChromaRafRef.current) {
+				cancelAnimationFrame(webcamPreviewChromaRafRef.current);
+				webcamPreviewChromaRafRef.current = null;
+			}
+			return;
+		}
+
+		if (!chromaKey?.enabled) {
+			if (webcamPreviewChromaRafRef.current) {
+				cancelAnimationFrame(webcamPreviewChromaRafRef.current);
+				webcamPreviewChromaRafRef.current = null;
+			}
+			return;
+		}
+
+		const ctx = canvas.getContext("2d", { willReadFrequently: true });
+		if (!ctx) return;
+
+		const hex = chromaKey.color.replace("#", "");
+		const kr = parseInt(hex.slice(0, 2), 16) / 255;
+		const kg = parseInt(hex.slice(2, 4), 16) / 255;
+		const kb = parseInt(hex.slice(4, 6), 16) / 255;
+		const toHsv = (r: number, g: number, b: number): [number, number, number] => {
+			const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+			const s = max === 0 ? 0 : d / max;
+			let h = 0;
+			if (d > 0) {
+				if (max === r) h = ((g - b) / d + 6) % 6;
+				else if (max === g) h = (b - r) / d + 2;
+				else h = (r - g) / d + 4;
+				h /= 6;
+			}
+			return [h, s, max];
+		};
+		const [kh, ks] = toHsv(kr, kg, kb);
+		const lo = Math.max(0, chromaKey.tolerance - chromaKey.smoothness);
+		const hi = chromaKey.tolerance;
+		const bgColor = chromaKey.backgroundColor ?? null;
+		let bgR = 0, bgG = 0, bgB = 0;
+		if (bgColor) {
+			const bgHex = bgColor.replace("#", "");
+			bgR = parseInt(bgHex.slice(0, 2), 16);
+			bgG = parseInt(bgHex.slice(2, 4), 16);
+			bgB = parseInt(bgHex.slice(4, 6), 16);
+		}
+
+		let lastW = 0;
+		let lastH = 0;
+
+		const tick = () => {
+			if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+				const vw = video.videoWidth;
+				const vh = video.videoHeight;
+				if (vw !== lastW || vh !== lastH) {
+					canvas.width = vw;
+					canvas.height = vh;
+					lastW = vw;
+					lastH = vh;
+				}
+				ctx.drawImage(video, 0, 0);
+				const imageData = ctx.getImageData(0, 0, vw, vh);
+				const data = imageData.data;
+				for (let i = 0; i < data.length; i += 4) {
+					const r = data[i] / 255;
+					const g = data[i + 1] / 255;
+					const b = data[i + 2] / 255;
+					const [h, s] = toHsv(r, g, b);
+					if (s < 0.15 || ks < 0.15) continue;
+					let hueDist = Math.abs(h - kh);
+					if (hueDist > 0.5) hueDist = 1 - hueDist;
+					const dist = hueDist * 1.5 + Math.abs(s - ks) * 1.5;
+					let alpha: number;
+					if (dist < lo) {
+						alpha = 0;
+					} else if (dist < hi) {
+						alpha = Math.round(((dist - lo) / (hi - lo)) * 255);
+					} else {
+						alpha = data[i + 3];
+					}
+					if (bgColor && alpha < 255) {
+						const t = alpha / 255;
+						data[i] = Math.round(bgR * (1 - t) + data[i] * t);
+						data[i + 1] = Math.round(bgG * (1 - t) + data[i + 1] * t);
+						data[i + 2] = Math.round(bgB * (1 - t) + data[i + 2] * t);
+						data[i + 3] = 255;
+					} else {
+						data[i + 3] = alpha;
+					}
+				}
+				ctx.putImageData(imageData, 0, 0);
+			}
+			webcamPreviewChromaRafRef.current = requestAnimationFrame(tick);
+		};
+		webcamPreviewChromaRafRef.current = requestAnimationFrame(tick);
+
+		return () => {
+			if (webcamPreviewChromaRafRef.current) {
+				cancelAnimationFrame(webcamPreviewChromaRafRef.current);
+				webcamPreviewChromaRafRef.current = null;
+			}
+		};
+	}, [showWebcamControls, webcamDeviceId, chromaKey]);
 
 	useEffect(() => {
 		let timer: NodeJS.Timeout | null = null;
@@ -379,6 +519,17 @@ export function LaunchWindow() {
 		document.addEventListener("mousedown", handleClick);
 		return () => document.removeEventListener("mousedown", handleClick);
 	}, []);
+
+	useEffect(() => {
+		if (!window.electronAPI?.onChapterMark) return;
+		return window.electronAPI.onChapterMark(({ timeMs }) => {
+			const totalSec = Math.floor(timeMs / 1000);
+			const m = Math.floor(totalSec / 60).toString().padStart(2, "0");
+			const s = (totalSec % 60).toString().padStart(2, "0");
+			toast.success(`챕터 마크 추가됨 — ${m}:${s}`, { duration: 2000 });
+		});
+	}, []);
+
 
 	const fetchSources = useCallback(async () => {
 		if (!window.electronAPI) return;
@@ -655,15 +806,168 @@ export function LaunchWindow() {
 										</div>
 									)}
 									{showWebcamControls && (
-										<div className="flex justify-center px-3 py-2">
-											<div className="h-24 w-24 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+										<div className="flex flex-col items-center gap-2 px-3 py-2">
+											<div
+												className="relative flex-shrink-0 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10"
+												style={{
+													width: webcamPreviewSize,
+													height: webcamPreviewSize,
+													cursor: eyedropperActive ? "crosshair" : undefined,
+												}}
+												onClick={(e) => {
+													if (!eyedropperActive) return;
+													const el = e.currentTarget;
+													const rect = el.getBoundingClientRect();
+													const xRatio = (e.clientX - rect.left) / rect.width;
+													const yRatio = (e.clientY - rect.top) / rect.height;
+													const srcEl = chromaKey.enabled ? webcamPreviewCanvasRef.current : webcamPreviewRef.current;
+													if (!srcEl) return;
+													const srcW = chromaKey.enabled ? (srcEl as HTMLCanvasElement).width : (srcEl as HTMLVideoElement).videoWidth;
+													const srcH = chromaKey.enabled ? (srcEl as HTMLCanvasElement).height : (srcEl as HTMLVideoElement).videoHeight;
+													if (!srcW || !srcH) return;
+													// canvas는 scaleX(-1)이므로 x 반전
+													const px = Math.floor((1 - xRatio) * srcW);
+													const py = Math.floor(yRatio * srcH);
+													const tmpCanvas = document.createElement("canvas");
+													tmpCanvas.width = srcW;
+													tmpCanvas.height = srcH;
+													const tmpCtx = tmpCanvas.getContext("2d");
+													if (!tmpCtx) return;
+													tmpCtx.drawImage(srcEl as CanvasImageSource, 0, 0);
+													const pixel = tmpCtx.getImageData(px, py, 1, 1).data;
+													const hex = `#${pixel[0].toString(16).padStart(2, "0")}${pixel[1].toString(16).padStart(2, "0")}${pixel[2].toString(16).padStart(2, "0")}`;
+													updateChromaKey({ color: hex });
+													setEyedropperActive(false);
+												}}
+											>
 												<video
 													ref={webcamPreviewRef}
 													className="h-full w-full object-cover"
 													muted
 													playsInline
-													style={{ transform: "scaleX(-1)" }}
+													style={{
+														transform: "scaleX(-1)",
+														opacity: chromaKey.enabled ? 0 : undefined,
+														position: chromaKey.enabled ? "absolute" : undefined,
+														pointerEvents: "none",
+													}}
 												/>
+												{chromaKey.enabled ? (
+													<canvas
+														ref={webcamPreviewCanvasRef}
+														style={{
+															position: "absolute",
+															inset: 0,
+															width: "100%",
+															height: "100%",
+															transform: "scaleX(-1)",
+															pointerEvents: "none",
+														}}
+													/>
+												) : null}
+											</div>
+											<input
+												type="range"
+												min={80}
+												max={260}
+												step={8}
+												value={webcamPreviewSize}
+												onChange={(e) => {
+													const v = Number(e.target.value);
+													setWebcamPreviewSize(v);
+													try { globalThis.localStorage?.setItem("recordly.webcam.previewSize", String(v)); } catch {}
+												}}
+												style={{ width: "100%", cursor: "pointer", accentColor: "#2563EB" }}
+											/>
+											{/* 크로마키 컨트롤 */}
+											<div className="w-full border-t border-white/10 pt-2">
+												<div className="flex items-center justify-between">
+													<span className="text-xs text-slate-300">{tSettings("preferences.webcamChromaKeyTitle")}</span>
+													<input
+														type="checkbox"
+														checked={chromaKey.enabled}
+														onChange={(e) => updateChromaKey({ enabled: e.target.checked })}
+														style={{ accentColor: "#2563EB", cursor: "pointer" }}
+													/>
+												</div>
+												{chromaKey.enabled && (
+													<div className="mt-2 flex flex-col gap-2">
+														<div className="flex items-center justify-between">
+															<span className="text-xs text-slate-400">{tSettings("preferences.webcamChromaKeyColor")}</span>
+															<div className="flex items-center gap-1">
+																<button
+																	type="button"
+																	title="스포이드로 색상 선택"
+																	onClick={() => setEyedropperActive((v) => !v)}
+																	style={{
+																		background: eyedropperActive ? "#2563EB" : "rgba(255,255,255,0.08)",
+																		border: "none",
+																		borderRadius: 4,
+																		padding: "3px 5px",
+																		cursor: "pointer",
+																		display: "flex",
+																		alignItems: "center",
+																	}}
+																>
+																	<Pipette size={13} color={eyedropperActive ? "#fff" : "#94a3b8"} />
+																</button>
+																<Block
+																	color={chromaKey.color}
+																	onChange={(c) => updateChromaKey({ color: c.hex })}
+																	style={{ boxShadow: "none" }}
+																/>
+															</div>
+														</div>
+														<div className="flex items-center justify-between">
+															<span className="text-xs text-slate-400">배경색</span>
+															<div className="flex items-center gap-2">
+																<input
+																	type="checkbox"
+																	checked={chromaKey.backgroundColor !== null}
+																	onChange={(e) => updateChromaKey({ backgroundColor: e.target.checked ? "#ffffff" : null })}
+																	style={{ accentColor: "#2563EB", cursor: "pointer" }}
+																/>
+																{chromaKey.backgroundColor !== null && (
+																	<Block
+																		color={chromaKey.backgroundColor}
+																		onChange={(c) => updateChromaKey({ backgroundColor: c.hex })}
+																		style={{ boxShadow: "none" }}
+																	/>
+																)}
+															</div>
+														</div>
+														<div className="flex flex-col gap-1">
+															<div className="flex items-center justify-between">
+																<span className="text-xs text-slate-400">{tSettings("preferences.webcamChromaKeyTolerance")}</span>
+																<span className="text-xs text-slate-400">{Math.round(chromaKey.tolerance * 100)}%</span>
+															</div>
+															<input
+																type="range"
+																min={0}
+																max={1}
+																step={0.01}
+																value={chromaKey.tolerance}
+																onChange={(e) => updateChromaKey({ tolerance: Number(e.target.value) })}
+																style={{ width: "100%", cursor: "pointer", accentColor: "#2563EB" }}
+															/>
+														</div>
+														<div className="flex flex-col gap-1">
+															<div className="flex items-center justify-between">
+																<span className="text-xs text-slate-400">{tSettings("preferences.webcamChromaKeySmoothness")}</span>
+																<span className="text-xs text-slate-400">{Math.round(chromaKey.smoothness * 100)}%</span>
+															</div>
+															<input
+																type="range"
+																min={0}
+																max={1}
+																step={0.01}
+																value={chromaKey.smoothness}
+																onChange={(e) => updateChromaKey({ smoothness: Number(e.target.value) })}
+																style={{ width: "100%", cursor: "pointer", accentColor: "#2563EB" }}
+															/>
+														</div>
+													</div>
+												)}
 											</div>
 										</div>
 									)}

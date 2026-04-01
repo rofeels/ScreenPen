@@ -7,10 +7,29 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import type { SaveDialogOptions } from "electron";
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, shell } from "electron";
 import { hideCursor, showCursor } from "../cursorHider";
 import { RECORDINGS_DIR } from "../main";
-import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
+import {
+	closeCountdownWindow,
+	createCountdownWindow,
+	createMediaPresenterWindow,
+	hideClickEffectWindow,
+	showClickEffectWindow,
+	destroyDrawingOverlay,
+	destroyKeystrokeWindow,
+	destroyLaserPointer,
+	destroyMediaPresenter,
+	getClickEffectWindow,
+	getCountdownWindow,
+	getDrawingOverlayWindow,
+	getKeystrokeWindow,
+	getLaserPointerWindow,
+	getMediaPresenterWindow,
+	toggleDrawingOverlay,
+	toggleKeystrokeWindow,
+	toggleLaserPointer,
+} from "../windows";
 import type {
 	CursorTelemetryPoint,
 	NativeMacRecordingOptions,
@@ -853,7 +872,6 @@ async function muxNativeWindowsVideoWithAudio(
 				"aac",
 				"-b:a",
 				"192k",
-				"-shortest",
 				mixedOutputPath,
 			],
 			{ timeout: 120000, maxBuffer: 10 * 1024 * 1024 },
@@ -875,7 +893,6 @@ async function muxNativeWindowsVideoWithAudio(
 				"aac",
 				"-b:a",
 				"192k",
-				"-shortest",
 				mixedOutputPath,
 			],
 			{ timeout: 120000, maxBuffer: 10 * 1024 * 1024 },
@@ -1035,6 +1052,8 @@ let isCursorCaptureActive = false;
 let interactionCaptureCleanup: (() => void) | null = null;
 let hasLoggedInteractionHookFailure = false;
 let lastLeftClick: { timeMs: number; cx: number; cy: number } | null = null;
+let chapterMarks: { timeMs: number }[] = [];
+let zoomMarks: { timeMs: number; cx: number; cy: number }[] = [];
 let linuxCursorScreenPoint: { x: number; y: number; updatedAt: number } | null = null;
 let selectedWindowBounds: WindowBounds | null = null;
 const selectedWindowBoundsTracker = createSelectedWindowBoundsTracker({
@@ -1120,6 +1139,26 @@ function sampleCursorPoint() {
 	}
 
 	pushCursorSample(point.cx, point.cy, Date.now() - cursorCaptureStartTimeMs, "move");
+
+	// Forward cursor position to drawing overlay and laser pointer
+	// Convert screen absolute coords to window-relative coords by subtracting window bounds
+	const screenPoint = getScreen().getCursorScreenPoint();
+	const drawingWin = getDrawingOverlayWindow();
+	if (drawingWin && !drawingWin.isDestroyed() && drawingWin.isVisible()) {
+		const bounds = drawingWin.getBounds();
+		drawingWin.webContents.send("cursor-screen-position", {
+			x: screenPoint.x - bounds.x,
+			y: screenPoint.y - bounds.y,
+		});
+	}
+	const laserWin = getLaserPointerWindow();
+	if (laserWin && !laserWin.isDestroyed() && laserWin.isVisible()) {
+		const bounds = laserWin.getBounds();
+		laserWin.webContents.send("cursor-screen-position", {
+			x: screenPoint.x - bounds.x,
+			y: screenPoint.y - bounds.y,
+		});
+	}
 }
 
 async function persistPendingCursorTelemetry(videoPath: string) {
@@ -1223,6 +1262,17 @@ async function startInteractionCapture() {
 			}
 
 			pushCursorSample(point.cx, point.cy, timeMs, interactionType);
+
+			// Forward click position to click-effect overlay
+			const clickWin = getClickEffectWindow();
+			if (clickWin && !clickWin.isDestroyed()) {
+				const screenPoint = getScreen().getCursorScreenPoint();
+				clickWin.webContents.send("click-event", {
+					x: screenPoint.x,
+					y: screenPoint.y,
+					type: interactionType,
+				});
+			}
 		};
 
 		const onMouseUp = (_event: HookMouseEventLike) => {
@@ -1252,9 +1302,24 @@ async function startInteractionCapture() {
 			linuxCursorScreenPoint = { x: point.x, y: point.y, updatedAt: Date.now() };
 		};
 
+		const onKeyDown = (event: { keycode: number; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => {
+			if (!isCursorCaptureActive) return;
+			const keystrokeWin = getKeystrokeWindow();
+			if (keystrokeWin && !keystrokeWin.isDestroyed()) {
+				keystrokeWin.webContents.send("keystroke-event", {
+					keycode: event.keycode,
+					altKey: event.altKey,
+					ctrlKey: event.ctrlKey,
+					metaKey: event.metaKey,
+					shiftKey: event.shiftKey,
+				});
+			}
+		};
+
 		hook.on("mousedown", onMouseDown);
 		hook.on("mouseup", onMouseUp);
 		hook.on("mousemove", onMouseMove);
+		(hook as unknown as { on: (e: string, h: (ev: unknown) => void) => void }).on("keydown", onKeyDown as (ev: unknown) => void);
 
 		hook.start();
 
@@ -1264,10 +1329,12 @@ async function startInteractionCapture() {
 					hook.off("mousedown", onMouseDown);
 					hook.off("mouseup", onMouseUp);
 					hook.off("mousemove", onMouseMove);
+					(hook as unknown as { off: (e: string, h: (ev: unknown) => void) => void }).off("keydown", onKeyDown as (ev: unknown) => void);
 				} else if (typeof hook.removeListener === "function") {
 					hook.removeListener("mousedown", onMouseDown);
 					hook.removeListener("mouseup", onMouseUp);
 					hook.removeListener("mousemove", onMouseMove);
+					(hook as unknown as { removeListener: (e: string, h: (ev: unknown) => void) => void }).removeListener("keydown", onKeyDown as (ev: unknown) => void);
 				}
 			} catch {
 				// ignore listener cleanup errors
@@ -1686,6 +1753,9 @@ export function registerIpcHandlers(
 				() => nativeCaptureOutputBuffer,
 				() => nativeCaptureTargetPath,
 			);
+			if (nativeCaptureOutputBuffer) {
+				console.log("[stop-native-screen-recording] helper output:", nativeCaptureOutputBuffer);
+			}
 			nativeCaptureProcess = null;
 			nativeScreenRecordingActive = false;
 			nativeCaptureTargetPath = null;
@@ -1727,11 +1797,15 @@ export function registerIpcHandlers(
 			if (fallbackPath) {
 				try {
 					await fs.access(fallbackPath);
-					console.log(
-						"[stop-native-screen-recording] Recovering with fallback path:",
-						fallbackPath,
-					);
-					return await finalizeStoredVideo(fallbackPath);
+					const stat = await fs.stat(fallbackPath);
+					if (stat.size > 0) {
+						console.log(
+							"[stop-native-screen-recording] Recovering with fallback path:",
+							fallbackPath,
+							"helper output:", nativeCaptureOutputBuffer,
+						);
+						return await finalizeStoredVideo(fallbackPath);
+					}
 				} catch {
 					// File doesn't exist or isn't accessible
 				}
@@ -2015,6 +2089,85 @@ export function registerIpcHandlers(
 			sampleCursorPoint();
 			cursorCaptureInterval = setInterval(sampleCursorPoint, CURSOR_SAMPLE_INTERVAL_MS);
 			void startInteractionCapture();
+			// 이전 등록이 남아있을 수 있으므로 먼저 해제 후 재등록
+			const RECORDING_SHORTCUTS = [
+				"CmdOrCtrl+Shift+D",
+				"CmdOrCtrl+Shift+K",
+				"CmdOrCtrl+Shift+L",
+				"CmdOrCtrl+Shift+M",
+				"CmdOrCtrl+Shift+P",
+				"CmdOrCtrl+Shift+R",
+				"CmdOrCtrl+Shift+U",
+			];
+			for (const key of RECORDING_SHORTCUTS) {
+				if (globalShortcut.isRegistered(key)) globalShortcut.unregister(key);
+			}
+			globalShortcut.register("CmdOrCtrl+Shift+D", toggleDrawingOverlay);
+			globalShortcut.register("CmdOrCtrl+Shift+L", toggleLaserPointer);
+			globalShortcut.register("CmdOrCtrl+Shift+P", async () => {
+				// alwaysOnTop 창들을 일시적으로 내려서 다이얼로그가 위로 올라오게 함
+				const alwaysOnTopWins = BrowserWindow.getAllWindows().filter(
+					(w) => !w.isDestroyed() && w.isAlwaysOnTop(),
+				);
+				alwaysOnTopWins.forEach((w) => w.setAlwaysOnTop(false));
+
+				// 앱을 포그라운드로 올린 뒤 다이얼로그 표시
+				app.focus({ steal: true });
+				const parentWin = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
+				if (parentWin) parentWin.focus();
+
+				const result = await dialog.showOpenDialog({
+					title: "프레젠테이션 자료 열기",
+					filters: [
+						{
+							name: "지원 형식",
+							extensions: ["pdf", "png", "jpg", "jpeg", "gif", "webp", "mp4", "mov", "webm", "pptx", "ppt"],
+						},
+					],
+					properties: ["openFile"],
+				});
+
+				// alwaysOnTop 복원
+				alwaysOnTopWins.forEach((w) => {
+					if (!w.isDestroyed()) w.setAlwaysOnTop(true);
+				});
+
+				if (!result.canceled && result.filePaths[0]) {
+					const ext = path.extname(result.filePaths[0]).toLowerCase();
+					if (ext === ".pptx" || ext === ".ppt") {
+						BrowserWindow.getAllWindows().forEach((win) => {
+							if (!win.isDestroyed()) win.webContents.send("media-presenter-ppt-warning");
+						});
+						return;
+					}
+					createMediaPresenterWindow(result.filePaths[0]);
+				}
+			});
+			globalShortcut.register("CmdOrCtrl+Shift+R", () => {
+				BrowserWindow.getAllWindows().forEach((win) => {
+					if (!win.isDestroyed()) win.webContents.send("stop-recording-from-tray");
+				});
+			});
+			globalShortcut.register("CmdOrCtrl+Shift+M", () => {
+				const timeMs = Date.now() - cursorCaptureStartTimeMs;
+				BrowserWindow.getAllWindows().forEach((win) => {
+					if (!win.isDestroyed()) win.webContents.send("chapter-mark", { timeMs });
+				});
+				chapterMarks.push({ timeMs });
+			});
+			globalShortcut.register("CmdOrCtrl+Shift+U", () => {
+				const timeMs = Date.now() - cursorCaptureStartTimeMs;
+				const screenPoint = getScreen().getCursorScreenPoint();
+				const display = getScreen().getDisplayNearestPoint(screenPoint);
+				const cx = (screenPoint.x - display.bounds.x) / display.bounds.width;
+				const cy = (screenPoint.y - display.bounds.y) / display.bounds.height;
+				zoomMarks.push({ timeMs, cx: Math.max(0, Math.min(1, cx)), cy: Math.max(0, Math.min(1, cy)) });
+				BrowserWindow.getAllWindows().forEach((win) => {
+					if (!win.isDestroyed()) win.webContents.send("zoom-mark", { timeMs, cx, cy });
+				});
+			});
+			showClickEffectWindow();
+			globalShortcut.register("CmdOrCtrl+Shift+K", toggleKeystrokeWindow);
 		} else {
 			isCursorCaptureActive = false;
 			stopCursorCapture();
@@ -2025,6 +2178,20 @@ export function registerIpcHandlers(
 			linuxCursorScreenPoint = null;
 			snapshotCursorTelemetryForPersistence();
 			activeCursorSamples = [];
+			chapterMarks = [];
+			// zoomMarks는 에디터에서 get-zoom-marks 호출 후 초기화됨
+			globalShortcut.unregister("CmdOrCtrl+Shift+D");
+			globalShortcut.unregister("CmdOrCtrl+Shift+K");
+			globalShortcut.unregister("CmdOrCtrl+Shift+L");
+			globalShortcut.unregister("CmdOrCtrl+Shift+P");
+			globalShortcut.unregister("CmdOrCtrl+Shift+R");
+			globalShortcut.unregister("CmdOrCtrl+Shift+M");
+			globalShortcut.unregister("CmdOrCtrl+Shift+U");
+			destroyDrawingOverlay();
+			hideClickEffectWindow();
+			destroyKeystrokeWindow();
+			destroyLaserPointer();
+			destroyMediaPresenter();
 		}
 
 		const source = selectedSource || { name: "Screen" };
@@ -2718,5 +2885,128 @@ export function registerIpcHandlers(
 		}
 		closeCountdownWindow();
 		return { success: true };
+	});
+
+	ipcMain.handle("toggle-drawing-overlay", () => {
+		toggleDrawingOverlay();
+		return { success: true };
+	});
+
+	ipcMain.handle("destroy-drawing-overlay", () => {
+		destroyDrawingOverlay();
+		return { success: true };
+	});
+
+	ipcMain.handle("close-media-presenter", () => {
+		destroyMediaPresenter();
+		return { success: true };
+	});
+
+	ipcMain.handle("set-media-presenter-opacity", (_event, opacity: number) => {
+		const win = getMediaPresenterWindow();
+		if (win && !win.isDestroyed()) {
+			win.setOpacity(Math.max(0.1, Math.min(1, opacity)));
+		}
+		return { success: true };
+	});
+
+	ipcMain.handle("get-chapter-marks", () => {
+		return { success: true, marks: chapterMarks };
+	});
+
+	ipcMain.handle("get-zoom-marks", () => {
+		const marks = [...zoomMarks];
+		zoomMarks = [];
+		return { success: true, marks };
+	});
+
+	ipcMain.handle("generate-subtitles", async (_event, videoPath: string) => {
+		try {
+			const ffmpegPath = getFfmpegBinaryPath();
+
+			// 1. ffmpeg으로 오디오 추출 (wav 16kHz mono)
+			const audioPath = videoPath.replace(/\.[^.]+$/, "_subtitle_audio.wav");
+			await new Promise<void>((resolve, reject) => {
+				const proc = spawn(
+					ffmpegPath,
+					["-y", "-i", videoPath, "-ar", "16000", "-ac", "1", "-f", "wav", audioPath],
+					{ stdio: "pipe" },
+				);
+				proc.on("close", (code) => {
+					if (code === 0) resolve();
+					else reject(new Error(`ffmpeg 오디오 추출 실패 (exit code: ${code})`));
+				});
+				proc.on("error", reject);
+			});
+
+			// 2. wav 파일을 Float32Array로 파싱 (AudioContext 없이)
+			const wavBuffer = await fs.readFile(audioPath);
+			// WAV data chunk 위치 찾기 ("data" 마커 검색)
+			let dataOffset = 44;
+			const view = new DataView(wavBuffer.buffer, wavBuffer.byteOffset, wavBuffer.byteLength);
+			for (let i = 12; i < wavBuffer.byteLength - 8; i++) {
+				if (
+					wavBuffer[i] === 0x64 && // 'd'
+					wavBuffer[i + 1] === 0x61 && // 'a'
+					wavBuffer[i + 2] === 0x74 && // 't'
+					wavBuffer[i + 3] === 0x61 // 'a'
+				) {
+					dataOffset = i + 8; // "data" + 4바이트 크기
+					break;
+				}
+			}
+			const bitsPerSample = view.getUint16(34, true);
+			const numSamples = (wavBuffer.byteLength - dataOffset) / (bitsPerSample / 8);
+			const audioData = new Float32Array(numSamples);
+			if (bitsPerSample === 16) {
+				for (let i = 0; i < numSamples; i++) {
+					audioData[i] = view.getInt16(dataOffset + i * 2, true) / 32768.0;
+				}
+			} else if (bitsPerSample === 32) {
+				for (let i = 0; i < numSamples; i++) {
+					audioData[i] = view.getFloat32(dataOffset + i * 4, true);
+				}
+			}
+
+			// 3. @xenova/transformers Whisper로 transcribe
+			const { pipeline } = nodeRequire("@xenova/transformers") as {
+				pipeline: (task: string, model: string, options?: Record<string, unknown>) => Promise<(audio: Float32Array, options?: Record<string, unknown>) => Promise<{ chunks: Array<{ timestamp: [number, number]; text: string }> }>>;
+			};
+			const transcriber = await pipeline("automatic-speech-recognition", "Xenova/whisper-base", {
+				cache_dir: path.join(app.getPath("userData"), "whisper-models"),
+			});
+			const sampleRate = view.getUint32(24, true);
+			console.log("[자막] WAV sampleRate:", sampleRate, "bitsPerSample:", bitsPerSample, "numSamples:", numSamples, "dataOffset:", dataOffset);
+			const result = await transcriber(audioData, {
+				language: "ko",
+				return_timestamps: true,
+				chunk_length_s: 30,
+				sampling_rate: sampleRate,
+			});
+
+			// 3. 결과 파싱
+			console.log("[자막] result:", JSON.stringify(result));
+			const segments = (result.chunks ?? []).map(
+				(chunk: { timestamp: [number, number]; text: string }, idx: number) => ({
+					id: `sub-${idx + 1}`,
+					startMs: Math.round((chunk.timestamp[0] ?? 0) * 1000),
+					endMs: Math.round((chunk.timestamp[1] ?? chunk.timestamp[0] + 3) * 1000),
+					text: chunk.text.trim(),
+				}),
+			);
+
+			// 오디오 파일 정리 (디버깅 중 주석 처리)
+			// try {
+			// 	await fs.unlink(audioPath);
+			// } catch {
+			// 	// 무시
+			// }
+			console.log("[자막] 오디오 파일 위치:", audioPath);
+
+			return { success: true, segments };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			return { success: false, error: message };
+		}
 	});
 }
