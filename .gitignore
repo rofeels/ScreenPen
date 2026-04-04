@@ -42,3 +42,4 @@ electron/native/cursor-monitor/build/
 *.mobileprovision
 *.keychain-db
 output_1775053206.mp4
+.kiro/
