@@ -1,7 +1,7 @@
 import type { ProcessedDesktopSource } from "./contracts";
 import type { NativeMacWindowSource } from "./nativeHelpers";
 
-const KNOWN_OWN_APP_NAMES = ["screencraft", "recordly"] as const;
+const KNOWN_OWN_APP_NAMES = ["screenpen", "screencraft", "recordly"] as const;
 
 type AppIconLike = {
 	toDataURL: () => string;
@@ -59,7 +59,7 @@ export function hasUsableSourceThumbnail(thumbnail: ThumbnailLike | null | undef
 
 export function collectOwnWindowNames(appName: string, windowTitles: string[]) {
 	return new Set(
-		[appName, "ScreenCraft", "Recordly", ...windowTitles]
+		[appName, "ScreenPen", "ScreenCraft", "Recordly", ...windowTitles]
 			.map((name) => normalizeDesktopSourceName(name))
 			.filter(Boolean),
 	);
@@ -146,13 +146,13 @@ export function buildScreenSourcesWithDisplayMetadata(
 export function buildElectronWindowSources(
 	electronSources: DesktopSourceLike[],
 	options: {
-		allowRecordlyWindowCapture: boolean;
+		allowOwnWindowCapture: boolean;
 		ownWindowNames: Set<string>;
 		allowPartialOwnWindowMatch?: boolean;
 	},
 ) {
 	const {
-		allowRecordlyWindowCapture,
+		allowOwnWindowCapture,
 		ownWindowNames,
 		allowPartialOwnWindowMatch = false,
 	} = options;
@@ -167,7 +167,7 @@ export function buildElectronWindowSources(
 			}
 
 			if (
-				allowRecordlyWindowCapture &&
+				allowOwnWindowCapture &&
 				KNOWN_OWN_APP_NAMES.some((name) => normalizedName.includes(name))
 			) {
 				return true;
@@ -182,12 +182,12 @@ export function buildMacWindowSources(
 	nativeWindowSources: NativeMacWindowSource[],
 	electronSources: DesktopSourceLike[],
 	options: {
-		allowRecordlyWindowCapture: boolean;
+		allowOwnWindowCapture: boolean;
 		ownAppName: string;
 		ownWindowNames: Set<string>;
 	},
 ): ProcessedDesktopSource[] {
-	const { allowRecordlyWindowCapture, ownAppName, ownWindowNames } = options;
+	const { allowOwnWindowCapture, ownAppName, ownWindowNames } = options;
 	const electronWindowSourceMap = new Map(
 		electronSources
 			.filter((source) => source.id.startsWith("window:"))
@@ -199,12 +199,12 @@ export function buildMacWindowSources(
 			const normalizedWindowName = normalizeDesktopSourceName(source.windowTitle ?? source.name);
 			const normalizedAppName = normalizeDesktopSourceName(source.appName ?? "");
 
-			if (!allowRecordlyWindowCapture && normalizedAppName && normalizedAppName === ownAppName) {
+			if (!allowOwnWindowCapture && normalizedAppName && normalizedAppName === ownAppName) {
 				return false;
 			}
 
 			if (
-				allowRecordlyWindowCapture &&
+				allowOwnWindowCapture &&
 				(KNOWN_OWN_APP_NAMES.includes(normalizedAppName as (typeof KNOWN_OWN_APP_NAMES)[number]) ||
 					KNOWN_OWN_APP_NAMES.some((name) => normalizedWindowName.includes(name)))
 			) {

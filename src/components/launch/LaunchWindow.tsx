@@ -188,7 +188,7 @@ export function LaunchWindow() {
 	const webcamPreviewChromaRafRef = useRef<number | null>(null);
 	const [webcamPreviewSize, setWebcamPreviewSize] = useState<number>(() => {
 		try {
-			const stored = globalThis.localStorage?.getItem("recordly.webcam.previewSize");
+			const stored = globalThis.localStorage?.getItem("screenpen.webcam.previewSize");
 			const parsed = stored ? Number(stored) : NaN;
 			return Number.isFinite(parsed) && parsed >= 80 && parsed <= 260 ? parsed : 160;
 		} catch {
@@ -875,7 +875,7 @@ export function LaunchWindow() {
 												onChange={(e) => {
 													const v = Number(e.target.value);
 													setWebcamPreviewSize(v);
-													try { globalThis.localStorage?.setItem("recordly.webcam.previewSize", String(v)); } catch {}
+													try { globalThis.localStorage?.setItem("screenpen.webcam.previewSize", String(v)); } catch {}
 												}}
 												style={{ width: "100%", cursor: "pointer", accentColor: "#2563EB" }}
 											/>

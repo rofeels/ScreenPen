@@ -12,7 +12,7 @@ describe("macCapture helpers", () => {
 			shouldBlockOwnWindowCapture({
 				source: { id: "window:1", name: "ScreenCraft", appName: "ScreenCraft" },
 				ownAppName: "screencraft",
-				allowRecordlyWindowCapture: false,
+				allowOwnWindowCapture: false,
 			}),
 		).toBe(true);
 
@@ -20,7 +20,7 @@ describe("macCapture helpers", () => {
 			shouldBlockOwnWindowCapture({
 				source: { id: "window:1", name: "Safari", appName: "Safari" },
 				ownAppName: "screencraft",
-				allowRecordlyWindowCapture: false,
+				allowOwnWindowCapture: false,
 			}),
 		).toBe(false);
 	});
@@ -28,7 +28,7 @@ describe("macCapture helpers", () => {
 	it("creates mac capture artifacts with optional mic sidecar", () => {
 		expect(
 			buildNativeMacCaptureArtifacts({
-				recordingsDir: "/tmp/recordly",
+				recordingsDir: "/tmp/screenpen",
 				recordingTimestamp: 42,
 				recordingOptions: {
 					capturesSystemAudio: true,
@@ -38,8 +38,8 @@ describe("macCapture helpers", () => {
 		).toEqual({
 			capturesSystemAudio: true,
 			capturesMicrophone: true,
-			outputPath: "/tmp/recordly/recording-42.mp4",
-			microphoneOutputPath: "/tmp/recordly/recording-42.mic.m4a",
+			outputPath: "/tmp/screenpen/recording-42.mp4",
+			microphoneOutputPath: "/tmp/screenpen/recording-42.mic.m4a",
 		});
 	});
 
@@ -50,7 +50,7 @@ describe("macCapture helpers", () => {
 				name: "Docs",
 				display_id: "5",
 			},
-			recordingsDir: "/tmp/recordly",
+			recordingsDir: "/tmp/screenpen",
 			primaryDisplayId: 99,
 			recordingTimestamp: 100,
 			recordingOptions: {
@@ -61,16 +61,16 @@ describe("macCapture helpers", () => {
 			},
 		});
 
-		expect(outputPath).toBe("/tmp/recordly/recording-100.mp4");
-		expect(microphoneOutputPath).toBe("/tmp/recordly/recording-100.mic.m4a");
+		expect(outputPath).toBe("/tmp/screenpen/recording-100.mp4");
+		expect(microphoneOutputPath).toBe("/tmp/screenpen/recording-100.mic.m4a");
 		expect(config).toEqual({
 			fps: 60,
-			outputPath: "/tmp/recordly/recording-100.mp4",
+			outputPath: "/tmp/screenpen/recording-100.mp4",
 			capturesSystemAudio: true,
 			capturesMicrophone: true,
 			microphoneDeviceId: "mic-1",
 			microphoneLabel: "Built-in Mic",
-			microphoneOutputPath: "/tmp/recordly/recording-100.mic.m4a",
+			microphoneOutputPath: "/tmp/screenpen/recording-100.mic.m4a",
 			windowId: 17,
 		});
 	});
@@ -79,7 +79,7 @@ describe("macCapture helpers", () => {
 		expect(
 			buildNativeMacCaptureConfig({
 				source: { id: "screen:2", name: "Display", display_id: "7" },
-				recordingsDir: "/tmp/recordly",
+				recordingsDir: "/tmp/screenpen",
 				primaryDisplayId: 99,
 				recordingTimestamp: 1,
 			}).config,
@@ -88,7 +88,7 @@ describe("macCapture helpers", () => {
 		expect(
 			buildNativeMacCaptureConfig({
 				source: { id: "screen:2", name: "Display", display_id: "" },
-				recordingsDir: "/tmp/recordly",
+				recordingsDir: "/tmp/screenpen",
 				primaryDisplayId: 99,
 				recordingTimestamp: 1,
 			}).config,

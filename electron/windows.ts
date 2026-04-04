@@ -37,7 +37,7 @@ const HUD_COMPACT_HEIGHT = 96;
 const HUD_EXPANDED_HEIGHT = 520 + HUD_SHADOW_BLEED_DIP;
 
 function useForcedVisibleWindows(): boolean {
-	return process.env["RECORDLY_FORCE_VISIBLE_WINDOWS"] === "1";
+	return process.env["SCREENPEN_FORCE_VISIBLE_WINDOWS"] === "1";
 }
 
 function isHudOverlayCaptureProtectionSupported(): boolean {

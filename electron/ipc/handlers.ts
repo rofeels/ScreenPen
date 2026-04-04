@@ -92,8 +92,8 @@ const COUNTDOWN_SETTINGS_FILE = path.join(app.getPath("userData"), "countdown-se
 const AUTO_RECORDING_PREFIX = "recording-";
 const AUTO_RECORDING_RETENTION_COUNT = 20;
 const AUTO_RECORDING_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
-const ALLOW_RECORDLY_WINDOW_CAPTURE = Boolean(process.env["VITE_DEV_SERVER_URL"]);
-const RECORDING_SESSION_MANIFEST_SUFFIX = ".recordly-session.json";
+const ALLOW_OWN_WINDOW_CAPTURE = Boolean(process.env["VITE_DEV_SERVER_URL"]);
+const RECORDING_SESSION_MANIFEST_SUFFIX = ".screenpen-session.json";
 
 function getScreen() {
 	return nodeRequire("electron").screen as typeof import("electron").screen;
@@ -1395,7 +1395,7 @@ export function registerIpcHandlers(
 
 		if (process.platform !== "darwin" || !includeWindows) {
 			const windowSources = buildElectronWindowSources(electronSources, {
-				allowRecordlyWindowCapture: ALLOW_RECORDLY_WINDOW_CAPTURE,
+				allowOwnWindowCapture: ALLOW_OWN_WINDOW_CAPTURE,
 				ownWindowNames,
 			});
 
@@ -1405,7 +1405,7 @@ export function registerIpcHandlers(
 		try {
 			const nativeWindowSources = await getNativeMacWindowSources();
 			const mergedWindowSources = buildMacWindowSources(nativeWindowSources, electronSources, {
-				allowRecordlyWindowCapture: ALLOW_RECORDLY_WINDOW_CAPTURE,
+				allowOwnWindowCapture: ALLOW_OWN_WINDOW_CAPTURE,
 				ownAppName,
 				ownWindowNames,
 			});
@@ -1415,7 +1415,7 @@ export function registerIpcHandlers(
 			console.warn("Falling back to Electron window enumeration on macOS:", error);
 
 			const windowSources = buildElectronWindowSources(electronSources, {
-				allowRecordlyWindowCapture: ALLOW_RECORDLY_WINDOW_CAPTURE,
+				allowOwnWindowCapture: ALLOW_OWN_WINDOW_CAPTURE,
 				ownWindowNames,
 				allowPartialOwnWindowMatch: true,
 			});
@@ -1612,7 +1612,7 @@ export function registerIpcHandlers(
 					shouldBlockOwnWindowCapture({
 						source,
 						ownAppName,
-						allowRecordlyWindowCapture: ALLOW_RECORDLY_WINDOW_CAPTURE,
+						allowOwnWindowCapture: ALLOW_OWN_WINDOW_CAPTURE,
 					})
 				) {
 					return {

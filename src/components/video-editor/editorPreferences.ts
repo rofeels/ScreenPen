@@ -34,7 +34,7 @@ export interface EditorPreferences extends PersistedEditorControls {
 	customWallpapers: string[];
 }
 
-export const EDITOR_PREFERENCES_STORAGE_KEY = "recordly.editor.preferences";
+export const EDITOR_PREFERENCES_STORAGE_KEY = "screenpen.editor.preferences";
 
 const DEFAULT_EDITOR_CONTROLS = normalizeProjectEditor({});
 

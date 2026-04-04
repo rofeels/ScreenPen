@@ -22,7 +22,7 @@ describe("sourceSelection helpers", () => {
 		const names = collectOwnWindowNames("ScreenCraft", ["  My Window  ", "Another   Window"]);
 
 		expect(names.has("screencraft")).toBe(true);
-		expect(names.has("recordly")).toBe(true);
+		expect(names.has("screenpen")).toBe(true);
 		expect(names.has("my window")).toBe(true);
 		expect(names.has("another window")).toBe(true);
 		expect(normalizeDesktopSourceName("  A   B  ")).toBe("a b");
@@ -95,7 +95,7 @@ describe("sourceSelection helpers", () => {
 			},
 			{
 				id: "window:2",
-				name: "Recordly Helper",
+				name: "ScreenPen Helper",
 				display_id: "1",
 				thumbnail: makeThumbnail("helper-thumb"),
 				appIcon: makeThumbnail("helper-icon"),
@@ -111,14 +111,14 @@ describe("sourceSelection helpers", () => {
 
 		expect(
 			buildElectronWindowSources(electronSources, {
-				allowRecordlyWindowCapture: true,
+				allowOwnWindowCapture: true,
 				ownWindowNames,
 			}).map((source) => source.id),
 		).toEqual(["window:2", "window:3"]);
 
 		expect(
 			buildElectronWindowSources(electronSources, {
-				allowRecordlyWindowCapture: false,
+				allowOwnWindowCapture: false,
 				ownWindowNames,
 				allowPartialOwnWindowMatch: true,
 			}).map((source) => source.id),
@@ -151,7 +151,7 @@ describe("sourceSelection helpers", () => {
 		];
 
 		const result = buildMacWindowSources(nativeWindowSources, electronSources, {
-			allowRecordlyWindowCapture: false,
+			allowOwnWindowCapture: false,
 			ownAppName: "screencraft",
 			ownWindowNames: collectOwnWindowNames("ScreenCraft", ["ScreenCraft Internal"]),
 		});

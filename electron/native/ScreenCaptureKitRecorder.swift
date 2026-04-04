@@ -57,11 +57,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 	func startCapture(configJSON: String) async throws {
 		guard !isRecording else {
-			throw NSError(domain: "RecordlyCapture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Recording is already in progress"])
+			throw NSError(domain: "ScreenPenCapture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Recording is already in progress"])
 		}
 
 		guard let data = configJSON.data(using: .utf8) else {
-			throw NSError(domain: "RecordlyCapture", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON input"])
+			throw NSError(domain: "ScreenPenCapture", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON input"])
 		}
 
 		let config = try JSONDecoder().decode(CaptureConfig.self, from: data)
@@ -71,7 +71,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		capturesMicrophone = config.capturesMicrophone ?? false
 		if capturesMicrophone && !supportsNativeMicrophoneCapture(streamConfig: streamConfig) {
 			throw NSError(
-				domain: "RecordlyCapture",
+				domain: "ScreenPenCapture",
 				code: 10,
 				userInfo: [NSLocalizedDescriptionKey: "Native microphone capture is unavailable on this macOS/Xcode runtime"]
 			)
@@ -102,7 +102,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		if let windowId = config.windowId {
 			trackedWindowId = windowId
 			guard let window = availableContent.windows.first(where: { $0.windowID == windowId }) else {
-				throw NSError(domain: "RecordlyCapture", code: 3, userInfo: [NSLocalizedDescriptionKey: "Window not found"])
+				throw NSError(domain: "ScreenPenCapture", code: 3, userInfo: [NSLocalizedDescriptionKey: "Window not found"])
 			}
 
 			filter = SCContentFilter(desktopIndependentWindow: window)
@@ -120,7 +120,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			trackedWindowId = nil
 			let displayId = config.displayId ?? CGMainDisplayID()
 			guard let display = availableContent.displays.first(where: { $0.displayID == displayId }) else {
-				throw NSError(domain: "RecordlyCapture", code: 4, userInfo: [NSLocalizedDescriptionKey: "Display not found"])
+				throw NSError(domain: "ScreenPenCapture", code: 4, userInfo: [NSLocalizedDescriptionKey: "Display not found"])
 			}
 
 			filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
@@ -148,7 +148,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		firstMicrophoneSampleTime = nil
 
 		guard let assistant = AVOutputSettingsAssistant(preset: .preset3840x2160) else {
-			throw NSError(domain: "RecordlyCapture", code: 5, userInfo: [NSLocalizedDescriptionKey: "Unable to create output settings assistant"])
+			throw NSError(domain: "ScreenPenCapture", code: 5, userInfo: [NSLocalizedDescriptionKey: "Unable to create output settings assistant"])
 		}
 
 		assistant.sourceVideoFormat = try CMVideoFormatDescription(
@@ -158,7 +158,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		)
 
 		guard var outputSettings = assistant.videoSettings else {
-			throw NSError(domain: "RecordlyCapture", code: 6, userInfo: [NSLocalizedDescriptionKey: "Output settings unavailable"])
+			throw NSError(domain: "ScreenPenCapture", code: 6, userInfo: [NSLocalizedDescriptionKey: "Output settings unavailable"])
 		}
 
 		outputSettings[AVVideoWidthKey] = outputWidth
@@ -168,7 +168,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		videoInput.expectsMediaDataInRealTime = true
 
 		guard let assetWriter = assetWriter, assetWriter.canAdd(videoInput) else {
-			throw NSError(domain: "RecordlyCapture", code: 7, userInfo: [NSLocalizedDescriptionKey: "Unable to add video writer input"])
+			throw NSError(domain: "ScreenPenCapture", code: 7, userInfo: [NSLocalizedDescriptionKey: "Unable to add video writer input"])
 		}
 
 		assetWriter.add(videoInput)
@@ -179,7 +179,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			audioInput.expectsMediaDataInRealTime = true
 
 			guard assetWriter.canAdd(audioInput) else {
-				throw NSError(domain: "RecordlyCapture", code: 11, userInfo: [NSLocalizedDescriptionKey: "Unable to add audio writer input"])
+				throw NSError(domain: "ScreenPenCapture", code: 11, userInfo: [NSLocalizedDescriptionKey: "Unable to add audio writer input"])
 			}
 
 			assetWriter.add(audioInput)
@@ -188,7 +188,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 		if writesMicrophoneToSeparateTrack {
 			guard let microphoneOutputPath = config.microphoneOutputPath, !microphoneOutputPath.isEmpty else {
-				throw NSError(domain: "RecordlyCapture", code: 12, userInfo: [NSLocalizedDescriptionKey: "Missing microphone output path for dual-audio capture"])
+				throw NSError(domain: "ScreenPenCapture", code: 12, userInfo: [NSLocalizedDescriptionKey: "Missing microphone output path for dual-audio capture"])
 			}
 
 			let microphoneURL = URL(fileURLWithPath: microphoneOutputPath)
@@ -198,7 +198,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			microphoneInput.expectsMediaDataInRealTime = true
 
 			guard microphoneWriter.canAdd(microphoneInput) else {
-				throw NSError(domain: "RecordlyCapture", code: 13, userInfo: [NSLocalizedDescriptionKey: "Unable to add microphone writer input"])
+				throw NSError(domain: "ScreenPenCapture", code: 13, userInfo: [NSLocalizedDescriptionKey: "Unable to add microphone writer input"])
 			}
 
 			microphoneWriter.add(microphoneInput)
@@ -206,7 +206,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			self.microphoneOnlyInput = microphoneInput
 
 			guard microphoneWriter.startWriting() else {
-				throw NSError(domain: "RecordlyCapture", code: 14, userInfo: [NSLocalizedDescriptionKey: microphoneWriter.error?.localizedDescription ?? "Unable to start microphone audio writing"])
+				throw NSError(domain: "ScreenPenCapture", code: 14, userInfo: [NSLocalizedDescriptionKey: microphoneWriter.error?.localizedDescription ?? "Unable to start microphone audio writing"])
 			}
 
 			microphoneWriter.startSession(atSourceTime: .zero)
@@ -221,7 +221,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		if capturesMicrophone {
 			guard let microphoneOutputType = SCStreamOutputType(rawValue: microphoneOutputTypeRawValue) else {
 				throw NSError(
-					domain: "RecordlyCapture",
+					domain: "ScreenPenCapture",
 					code: 15,
 					userInfo: [NSLocalizedDescriptionKey: "Microphone stream output type is unavailable"]
 				)
@@ -230,10 +230,10 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		}
 		let permissionStatus = CGPreflightScreenCaptureAccess()
 		if !permissionStatus {
-			throw NSError(domain: "RecordlyCapture", code: 18, userInfo: [NSLocalizedDescriptionKey: "Screen recording permission denied for this process"])
+			throw NSError(domain: "ScreenPenCapture", code: 18, userInfo: [NSLocalizedDescriptionKey: "Screen recording permission denied for this process"])
 		}
 		guard assetWriter.startWriting() else {
-			throw NSError(domain: "RecordlyCapture", code: 8, userInfo: [NSLocalizedDescriptionKey: assetWriter.error?.localizedDescription ?? "Unable to start video writing"])
+			throw NSError(domain: "ScreenPenCapture", code: 8, userInfo: [NSLocalizedDescriptionKey: assetWriter.error?.localizedDescription ?? "Unable to start video writing"])
 		}
 
 		assetWriter.startSession(atSourceTime: .zero)
@@ -265,7 +265,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 	func stopCapture() async throws -> String {
 		guard isRecording else {
-			throw NSError(domain: "RecordlyCapture", code: 9, userInfo: [NSLocalizedDescriptionKey: "No recording in progress"])
+			throw NSError(domain: "ScreenPenCapture", code: 9, userInfo: [NSLocalizedDescriptionKey: "No recording in progress"])
 		}
 
 		return try await finishCapture()
@@ -381,7 +381,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			fputs("Error: endTime is not numeric, skipping endSession\n", stderr)
 			fflush(stderr)
 			assetWriter?.cancelWriting()
-			throw NSError(domain: "RecordlyCapture", code: 17, userInfo: [NSLocalizedDescriptionKey: "No frames were recorded"])
+			throw NSError(domain: "ScreenPenCapture", code: 17, userInfo: [NSLocalizedDescriptionKey: "No frames were recorded"])
 		}
 		assetWriter?.endSession(atSourceTime: endTime)
 		videoInput?.markAsFinished()
@@ -391,7 +391,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			let errorMsg = writer.error?.localizedDescription ?? "unknown"
 			fputs("Error: assetWriter finishWriting failed: \(errorMsg)\n", stderr)
 			fflush(stderr)
-			throw NSError(domain: "RecordlyCapture", code: 16, userInfo: [NSLocalizedDescriptionKey: "Failed to finalize video file: \(errorMsg)"])
+			throw NSError(domain: "ScreenPenCapture", code: 16, userInfo: [NSLocalizedDescriptionKey: "Failed to finalize video file: \(errorMsg)"])
 		}
 
 		microphoneOnlyInput?.markAsFinished()
