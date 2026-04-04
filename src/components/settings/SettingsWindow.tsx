@@ -401,7 +401,7 @@ export function SettingsWindow() {
 			<div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-6 py-8 md:px-8">
 				<header className="border-b border-white/10 pb-6">
 					<div className="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-blue-400">
-						{t("common.app.name", "ScreenCraft")}
+						{t("common.app.name", "ScreenPen")}
 					</div>
 					<h1 className="text-3xl font-semibold tracking-tight">
 						{tSettings("preferences.title")}

@@ -85,7 +85,7 @@ export function setupAutoUpdater() {
 			defaultId: 0,
 			cancelId: 1,
 			title: "Update Available",
-			message: `ScreenCraft ${info.version} is available.`,
+			message: `ScreenPen ${info.version} is available.`,
 			detail: "Do you want to download the update now?",
 		});
 
@@ -115,7 +115,7 @@ export function setupAutoUpdater() {
 			defaultId: 0,
 			cancelId: 1,
 			title: "Update Ready",
-			message: `ScreenCraft ${info.version} has been downloaded.`,
+			message: `ScreenPen ${info.version} has been downloaded.`,
 			detail: "Restart the app now to install the update.",
 		});
 

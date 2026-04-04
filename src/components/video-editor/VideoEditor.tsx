@@ -2018,7 +2018,7 @@ export default function VideoEditor() {
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<span className="text-sm font-semibold tracking-tight text-white/90">
-					{t("common.app.name", "ScreenCraft")}
+					{t("common.app.name", "ScreenPen")}
 				</span>
 				<div
 					className="absolute right-4 flex items-center gap-1"

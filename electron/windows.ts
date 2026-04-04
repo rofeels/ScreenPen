@@ -182,7 +182,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		skipTaskbar: !forceVisibleWindows,
 		hasShadow: forceVisibleWindows,
 		show: false,
-		title: "ScreenCraft HUD",
+		title: "ScreenPen HUD",
 		backgroundColor: forceVisibleWindows ? "#09090b" : "#00000000",
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
@@ -244,7 +244,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "ScreenCraft",
+		title: "ScreenPen",
 		show: false,
 		backgroundColor: "#000000",
 		webPreferences: {
@@ -298,7 +298,7 @@ export function createSettingsWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "ScreenCraft Settings",
+		title: "ScreenPen Settings",
 		show: false,
 		backgroundColor: "#09090b",
 		webPreferences: {
@@ -349,7 +349,7 @@ export function createSourceSelectorWindow(): BrowserWindow {
 		...(process.platform !== "darwin" && {
 			icon: WINDOW_ICON_PATH,
 		}),
-		title: "ScreenCraft Source Selector",
+		title: "ScreenPen Source Selector",
 		backgroundColor: forceVisibleWindows ? "#09090b" : "#00000000",
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),

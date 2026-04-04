@@ -1,15 +1,15 @@
 {
-	"name": "screencraft",
-	"productName": "ScreenCraft",
-	"description": "A free, creator-focused screen recorder with auto-zoom, cursor effects, backgrounds, annotations, and more - built for polished videos out of the box.",
-	"author": "NewTurn2017",
-	"homepage": "https://github.com/NewTurn2017/ScreenCraft",
+	"name": "screenpen",
+	"productName": "ScreenPen",
+	"description": "화면 녹화와 편집을 위한 무료 데스크탑 앱. 자동 줌, 커서 효과, 드로잉 오버레이, 주석, 크로마키 등 기능 내장.",
+	"author": "rofeels",
+	"homepage": "https://github.com/rofeels/ScreenPen",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/NewTurn2017/ScreenCraft.git"
+		"url": "https://github.com/rofeels/ScreenPen.git"
 	},
 	"bugs": {
-		"url": "https://github.com/NewTurn2017/ScreenCraft/issues"
+		"url": "https://github.com/rofeels/ScreenPen/issues"
 	},
 	"private": true,
 	"version": "1.2.2",

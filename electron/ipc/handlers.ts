@@ -84,8 +84,8 @@ import {
 const execFileAsync = promisify(execFile);
 const nodeRequire = createRequire(import.meta.url);
 
-const PROJECT_FILE_EXTENSION = "screencraft";
-const LEGACY_PROJECT_FILE_EXTENSIONS = ["recordly", "openscreen"];
+const PROJECT_FILE_EXTENSION = "screenpen";
+const LEGACY_PROJECT_FILE_EXTENSIONS = ["screencraft", "recordly", "openscreen"];
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 const RECORDINGS_SETTINGS_FILE = path.join(app.getPath("userData"), "recordings-settings.json");
 const COUNTDOWN_SETTINGS_FILE = path.join(app.getPath("userData"), "countdown-settings.json");
@@ -1617,7 +1617,7 @@ export function registerIpcHandlers(
 				) {
 					return {
 						success: false,
-						message: "Cannot record ScreenCraft windows. Please select another app window.",
+						message: "Cannot record ScreenPen windows. Please select another app window.",
 					};
 				}
 
@@ -2557,11 +2557,11 @@ export function registerIpcHandlers(
 					: `${safeName}.${PROJECT_FILE_EXTENSION}`;
 
 				const result = await dialog.showSaveDialog({
-					title: "Save ScreenCraft Project",
+					title: "Save ScreenPen Project",
 					defaultPath: path.join(recordingsDir, defaultName),
 					filters: [
 						{
-							name: "ScreenCraft Project",
+							name: "ScreenPen Project",
 							extensions: [PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS],
 						},
 						{ name: "JSON", extensions: ["json"] },
@@ -2600,11 +2600,11 @@ export function registerIpcHandlers(
 		try {
 			const recordingsDir = await getRecordingsDir();
 			const result = await dialog.showOpenDialog({
-				title: "Open ScreenCraft Project",
+				title: "Open ScreenPen Project",
 				defaultPath: recordingsDir,
 				filters: [
 					{
-						name: "ScreenCraft Project",
+						name: "ScreenPen Project",
 						extensions: [PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS],
 					},
 					{ name: "JSON", extensions: ["json"] },

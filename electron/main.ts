@@ -420,7 +420,7 @@ function syncDockIcon() {
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
-	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "ScreenCraft";
+	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "ScreenPen";
 	const menuTemplate = recording
 		? [
 				{

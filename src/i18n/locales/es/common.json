@@ -1,7 +1,7 @@
 {
 	"app": {
-		"name": "ScreenCraft",
-		"editorTitle": "Editor de ScreenCraft",
+		"name": "ScreenPen",
+		"editorTitle": "Editor de ScreenPen",
 		"subtitle": "Grabación de pantalla y edición",
 		"language": "Idioma",
 		"loadingVideo": "Cargando video...",

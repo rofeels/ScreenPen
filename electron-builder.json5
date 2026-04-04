@@ -1,19 +1,19 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.newturn2017.screencraft",
+  "appId": "com.rofeels.screenpen",
   "asar": true,
   "asarUnpack": [
     "node_modules/ffmpeg-static/**",
     "node_modules/uiohook-napi/**",
     "electron/native/**"
   ],
-  "productName": "ScreenCraft",
+  "productName": "ScreenPen",
   "publish": [
     {
       "provider": "github",
-      "owner": "NewTurn2017",
-      "repo": "ScreenCraft"
+      "owner": "rofeels",
+      "repo": "ScreenPen"
     }
   ],
   "npmRebuild": true,
@@ -60,9 +60,9 @@
     "artifactName": "${productName}-${arch}.${ext}",
     "extendInfo": {
       "NSQuitAlwaysKeepsWindows": false,
-      "NSAudioCaptureUsageDescription": "ScreenCraft needs audio capture permission to record system audio.",
-      "NSMicrophoneUsageDescription": "ScreenCraft needs microphone access to record voice audio.",
-      "NSCameraUsageDescription": "ScreenCraft needs camera access for webcam overlay.",
+      "NSAudioCaptureUsageDescription": "ScreenPen needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "ScreenPen needs microphone access to record voice audio.",
+      "NSCameraUsageDescription": "ScreenPen needs camera access for webcam overlay.",
       "NSCameraUseContinuityCameraDeviceType": true
     }
   },
