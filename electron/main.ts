@@ -92,7 +92,7 @@ function closeEditorWindowBypassingUnsavedPrompt(window: BrowserWindow | null) {
 }
 
 // Tray Icons
-const defaultTrayIcon = getTrayIcon("app-icons/screencraft-32.png");
+const defaultTrayIcon = getTrayIcon("app-icons/screenpen-32.png");
 const recordingTrayIcon = getTrayIcon("rec-button.png");
 
 ipcMain.on("set-has-unsaved-changes", (_event, hasChanges: boolean) => {
@@ -410,7 +410,7 @@ function syncDockIcon() {
 		return;
 	}
 
-	const dockIcon = getAppImage("app-icons/screencraft-512.png");
+	const dockIcon = getAppImage("app-icons/screenpen-512.png");
 	if (!dockIcon.isEmpty()) {
 		app.dock.show();
 		app.dock.setIcon(dockIcon);

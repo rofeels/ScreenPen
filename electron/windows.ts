@@ -13,7 +13,7 @@ const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const WINDOW_ICON_PATH = path.join(
 	process.env.VITE_PUBLIC || RENDERER_DIST,
 	"app-icons",
-	"screencraft-512.png",
+	"screenpen-512.png",
 );
 
 let hudOverlayWindow: BrowserWindow | null = null;

@@ -92,7 +92,7 @@ export default function App() {
 				<div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
 					<div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-5 shadow-2xl shadow-black/30 backdrop-blur-xl">
 						<img
-							src="/app-icons/screencraft-128.png"
+							src="/app-icons/screenpen-128.png"
 							alt={t("app.name", "ScreenPen")}
 							className="h-12 w-12 rounded-xl"
 						/>
