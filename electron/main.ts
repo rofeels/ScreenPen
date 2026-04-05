@@ -91,9 +91,9 @@ function closeEditorWindowBypassingUnsavedPrompt(window: BrowserWindow | null) {
 	window.close();
 }
 
-// Tray Icons
-const defaultTrayIcon = getTrayIcon("app-icons/screenpen-32.png");
-const recordingTrayIcon = getTrayIcon("rec-button.png");
+// Tray Icons (macOS template image: 단색, 다크/라이트 모드 자동 대응)
+const defaultTrayIcon = getTrayIcon("trayIconTemplate.png");
+const recordingTrayIcon = getTrayIcon("trayRecordingTemplate.png");
 
 ipcMain.on("set-has-unsaved-changes", (_event, hasChanges: boolean) => {
 	editorHasUnsavedChanges = hasChanges;
@@ -398,11 +398,11 @@ function getAppImage(filename: string) {
 }
 
 function getTrayIcon(filename: string) {
-	return getAppImage(filename).resize({
-		width: 24,
-		height: 24,
-		quality: "best",
-	});
+	const img = nativeImage.createFromPath(getPublicAssetPath(filename));
+	if (process.platform === "darwin") {
+		img.setTemplateImage(true);
+	}
+	return img;
 }
 
 function syncDockIcon() {
